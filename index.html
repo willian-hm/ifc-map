@@ -1,0 +1,2426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>IFC Campus Videira • Mapa 2D Pixel Art</title>
+<style>
+  :root{
+    --bg:#0d0d12; --panel:rgba(13,13,18,.88);
+    --purple:#8b5cf6; --purple-soft:rgba(139,92,246,.38);
+    --green:#10b981; --green-soft:rgba(16,185,129,.35);
+    --text:#ececf4; --muted:#9b9bb4;
+    --font:'Poppins','Segoe UI',system-ui,-apple-system,Roboto,sans-serif;
+    --mono:'Press Start 2P','VT323',ui-monospace,'Courier New',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);
+    -webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
+  #game{position:fixed;inset:0;display:block;image-rendering:pixelated;image-rendering:crisp-edges;cursor:crosshair}
+  .panel{background:var(--panel);border:1px solid var(--purple-soft);border-radius:12px;
+    box-shadow:0 8px 30px rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+
+  /* Marca */
+  #brand{position:fixed;top:14px;left:14px;display:flex;align-items:center;gap:10px;padding:8px 14px 8px 10px;z-index:5}
+  .ifc-logo{display:grid;grid-template-columns:repeat(3,6px);grid-template-rows:repeat(4,6px);gap:2px}
+  .ifc-logo span{background:var(--green);border-radius:1px}
+  .ifc-logo span.r{background:#e11d48;border-radius:50%}
+  .ifc-logo span.e{background:transparent}
+  #brand .t1{font-weight:700;font-size:13px;letter-spacing:.3px}
+  #brand .t2{font-size:9.5px;color:var(--muted);letter-spacing:1.6px;text-transform:uppercase;font-family:var(--mono)}
+
+  /* Indicador de local */
+  #location{position:fixed;top:14px;left:50%;transform:translateX(-50%);padding:9px 18px;display:flex;align-items:center;
+    gap:10px;font-size:13px;z-index:5;white-space:nowrap;max-width:calc(100vw - 560px);overflow:hidden;text-overflow:ellipsis}
+  #location .dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 0 0 var(--green-soft);
+    animation:pulse 1.8s infinite;flex:none}
+  #location .lbl{color:var(--muted)}
+  #location b{color:#fff;font-weight:600}
+  #location.near{border-color:rgba(16,185,129,.6)}
+  #location.near .lbl{color:var(--green)}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.55)}70%{box-shadow:0 0 0 9px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+
+  /* Minimapa */
+  #minimap-wrap{position:fixed;top:14px;right:14px;padding:8px;z-index:5}
+  #minimap-wrap .head{display:flex;justify-content:space-between;align-items:center;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:1.5px;color:var(--muted);margin:0 2px 6px}
+  #minimap-wrap .head span:first-child{color:var(--purple);font-weight:700}
+  #minimap{display:block;border-radius:8px;border:1px solid rgba(255,255,255,.08);image-rendering:auto}
+
+  /* Barra de ferramentas */
+  #toolbar{position:fixed;top:66px;left:14px;display:flex;gap:6px;z-index:5;flex-wrap:wrap;max-width:300px}
+  #toolbar button{font-family:var(--font);font-size:11.5px;color:var(--text);background:var(--panel);border:1px solid var(--purple-soft);
+    border-radius:9px;padding:6px 10px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:.15s}
+  #toolbar button:hover{border-color:var(--purple);transform:translateY(-1px)}
+  #toolbar button.on{background:rgba(139,92,246,.22);border-color:var(--purple);color:#fff}
+  #toolbar button.on.green{background:rgba(16,185,129,.2);border-color:var(--green)}
+  kbd{font-family:var(--mono);font-size:9.5px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
+    border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:#d9d9e6}
+
+  /* Ajuda */
+  #help{position:fixed;left:14px;bottom:14px;padding:12px 14px;font-size:12px;z-index:5;min-width:230px}
+  #help h4{font-size:10px;font-family:var(--mono);letter-spacing:1.6px;color:var(--purple);margin-bottom:8px;text-transform:uppercase}
+  #help .row{display:flex;justify-content:space-between;gap:16px;padding:3px 0;color:var(--muted)}
+  #help .row span:last-child{color:var(--text)}
+  #help.hidden{display:none}
+
+  /* Cartão de interação */
+  #interact{position:fixed;left:50%;bottom:22px;transform:translate(-50%,24px);opacity:0;pointer-events:none;
+    padding:12px 18px 13px;min-width:280px;max-width:min(520px,calc(100vw - 28px));z-index:6;transition:.22s ease;
+    border-color:rgba(16,185,129,.55)}
+  #interact.show{opacity:1;transform:translate(-50%,0)}
+  #interact .tag{font-family:var(--mono);font-size:9px;letter-spacing:1.8px;color:var(--green);margin-bottom:4px;display:flex;align-items:center;gap:6px}
+  #interact .tag::before{content:'';width:7px;height:7px;background:var(--green);display:inline-block}
+  #interact .name{font-size:16px;font-weight:700;color:#fff}
+  #interact .desc{font-size:12.5px;color:#c4c4d6;margin-top:3px;line-height:1.45}
+  #interact .bar{height:2px;margin-top:9px;border-radius:2px;background:linear-gradient(90deg,var(--green),var(--purple))}
+
+  #debug-badge{position:fixed;top:66px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:10px;letter-spacing:1.5px;
+    padding:5px 10px;border-radius:8px;background:rgba(239,68,68,.16);border:1px solid rgba(239,68,68,.55);color:#fca5a5;z-index:5;display:none}
+  #debug-badge.show{display:block}
+
+  /* Carregamento */
+  #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:50;transition:opacity .4s}
+  #loading.hide{opacity:0;pointer-events:none}
+  #loading .bar{width:220px;height:6px;border-radius:6px;background:rgba(255,255,255,.07);overflow:hidden}
+  #loading .bar i{display:block;height:100%;width:40%;background:linear-gradient(90deg,var(--green),var(--purple));animation:load 1s infinite ease-in-out}
+  #loading p{font-family:var(--mono);font-size:11px;letter-spacing:1.5px;color:var(--muted)}
+  @keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
+
+  @media (max-width:900px){
+    #location{top:auto;bottom:14px;left:14px;transform:none;max-width:calc(100vw - 28px);font-size:12px}
+    #help{display:none}
+    #interact{bottom:66px}
+    #toolbar{max-width:200px}
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="brand" class="panel">
+  <div class="ifc-logo"><span class="r"></span><span></span><span class="e"></span><span></span><span></span><span></span><span></span><span></span><span class="e"></span><span></span><span></span><span></span></div>
+  <div><div class="t1">IFC • Campus Videira</div><div class="t2">Pixel Map 16-bit</div></div>
+</div>
+
+<div id="location" class="panel"><span class="dot"></span><span class="lbl" id="loc-label"></span><b id="loc-name">Caminhando pelo Campus</b></div>
+
+<div id="minimap-wrap" class="panel">
+  <div class="head"><span>MAPA</span><span id="coords">0 , 0</span></div>
+  <canvas id="minimap"></canvas>
+</div>
+
+<div id="toolbar">
+  <button id="btn-hitbox" title="Mostrar hitboxes de colisão">Hitbox <kbd>H</kbd></button>
+  <button id="btn-run" title="Alternar corrida (mobile)">Correr <kbd>Shift</kbd></button>
+  <button id="btn-help" title="Mostrar/ocultar ajuda">Ajuda</button>
+</div>
+
+<div id="help" class="panel">
+  <h4>Controles</h4>
+  <div class="row"><span>Mover</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / Setas</span></div>
+  <div class="row"><span>Correr</span><span><kbd>Shift</kbd></span></div>
+  <div class="row"><span>Andar até um ponto</span><span>Clique / Toque</span></div>
+  <div class="row"><span>Hitboxes (debug)</span><span><kbd>H</kbd> ou <kbd>C</kbd></span></div>
+  <div class="row"><span>Zoom</span><span><kbd>+</kbd> <kbd>−</kbd></span></div>
+  <div class="row"><span>Minimapa</span><span><kbd>M</kbd></span></div>
+</div>
+
+<div id="interact" class="panel">
+  <div class="tag">PRÓXIMO À ENTRADA</div>
+  <div class="name" id="int-name">—</div>
+  <div class="desc" id="int-desc">—</div>
+  <div class="bar"></div>
+</div>
+
+<div id="debug-badge">DEBUG • HITBOXES VISÍVEIS</div>
+
+<div id="loading"><div class="ifc-logo" style="transform:scale(2)"><span class="r"></span><span></span><span class="e"></span><span></span><span></span><span></span><span></span><span></span><span class="e"></span><span></span><span></span><span></span></div><div class="bar"><i></i></div><p>GERANDO O CAMPUS EM PIXEL ART...</p></div>
+
+<script>
+(() => {
+'use strict';
+
+/* =========================================================================
+   1. CONSTANTES E UTILITÁRIOS
+   ========================================================================= */
+const W = 2400, H = 1600;               // Tamanho do mundo em pixels
+
+// Gerador pseudoaleatório determinístico (o mapa é sempre igual)
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+const clamp = (v, a, b) => v < a ? a : v > b ? b : v;
+
+function hash2(x, y) {
+  let h = (Math.imul(x | 0, 374761393) + Math.imul(y | 0, 668265263)) | 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+}
+function hash1(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+function noise1(x) { const i = Math.floor(x), f = x - i, u = f * f * (3 - 2 * f); return hash1(i) * (1 - u) + hash1(i + 1) * u; }
+
+function hexToRgb(h) { h = h.replace('#', ''); return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16), 255]; }
+const C = hexToRgb;
+function rgbStr(c) { return 'rgb(' + c[0] + ',' + c[1] + ',' + c[2] + ')'; }
+function shade(c, f) { return [clamp(Math.round(c[0] * f), 0, 255), clamp(Math.round(c[1] * f), 0, 255), clamp(Math.round(c[2] * f), 0, 255), c.length > 3 ? c[3] : 255]; }
+function mix(a, b, t) { return [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t), 255]; }
+
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+function bayer(x, y) { return BAYER[(y & 3) * 4 + (x & 3)] / 16; }
+
+function makeCanvas(w, h, willRead) {
+  const c = document.createElement('canvas');
+  c.width = Math.max(1, w | 0); c.height = Math.max(1, h | 0);
+  const g = c.getContext('2d', willRead ? { willReadFrequently: true } : undefined);
+  g.imageSmoothingEnabled = false;
+  return [c, g];
+}
+function rect(g, x, y, w, h, col) { g.fillStyle = col; g.fillRect(x, y, w, h); }
+// Disco em pixel art (sem antialiasing): desenhado linha a linha
+function disc(g, cx, cy, r, col) {
+  g.fillStyle = col;
+  for (let dy = -r; dy <= r; dy++) { const hw = Math.floor(Math.sqrt(r * r - dy * dy + 0.5)); g.fillRect(cx - hw, cy + dy, hw * 2 + 1, 1); }
+}
+function ellipseFill(g, cx, cy, rx, ry, col) {
+  g.fillStyle = col;
+  for (let dy = -ry; dy <= ry; dy++) { const hw = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry)))); g.fillRect(cx - hw, cy + dy, hw * 2 + 1, 1); }
+}
+// Contorno externo de 1px (usado no personagem, carros e objetos)
+function addOuterOutline(g, w, h, col) {
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  const a = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) a[i] = d[i * 4 + 3] > 0 ? 1 : 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (a[i]) continue;
+    if ((x > 0 && a[i - 1]) || (x < w - 1 && a[i + 1]) || (y > 0 && a[i - w]) || (y < h - 1 && a[i + w])) {
+      d[i * 4] = col[0]; d[i * 4 + 1] = col[1]; d[i * 4 + 2] = col[2]; d[i * 4 + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+}
+// Rotaciona um canvas em múltiplos de 90° (mapeamento de pixels exato)
+function rotateCanvas(src, quarter) {
+  const w = src.width, h = src.height;
+  const swap = quarter % 2 === 1;
+  const [c, g] = makeCanvas(swap ? h : w, swap ? w : h);
+  g.translate(c.width / 2, c.height / 2);
+  g.rotate(quarter * Math.PI / 2);
+  g.drawImage(src, -w / 2, -h / 2);
+  return c;
+}
+// Silhueta preta de um sprite (para sombras projetadas)
+function silhouette(src) {
+  const [c, g] = makeCanvas(src.width, src.height);
+  g.drawImage(src, 0, 0);
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height);
+  return c;
+}
+function distToSeg(px, py, x0, y0, x1, y1) {
+  const dx = x1 - x0, dy = y1 - y0, l2 = dx * dx + dy * dy;
+  let t = l2 ? ((px - x0) * dx + (py - y0) * dy) / l2 : 0; t = clamp(t, 0, 1);
+  return Math.hypot(px - (x0 + dx * t), py - (y0 + dy * t));
+}
+function distToPolyline(px, py, pts) {
+  let m = Infinity;
+  for (let i = 0; i < pts.length - 1; i++) m = Math.min(m, distToSeg(px, py, pts[i][0], pts[i][1], pts[i + 1][0], pts[i + 1][1]));
+  return m;
+}
+function rectDist(px, py, r) {
+  const dx = Math.max(r[0] - px, 0, px - (r[0] + r[2]));
+  const dy = Math.max(r[1] - py, 0, py - (r[1] + r[3]));
+  return Math.hypot(dx, dy);
+}
+
+// Fonte pixel 3x5 para letreiros desenhados no mundo
+const FONT3 = {
+  I: ['111', '010', '010', '010', '111'], F: ['111', '100', '110', '100', '100'], C: ['011', '100', '100', '100', '011'],
+  A: ['010', '101', '111', '101', '101'], O: ['010', '101', '101', '101', '010'], P: ['110', '101', '110', '100', '100'],
+  S: ['011', '100', '010', '001', '110'], E: ['111', '100', '110', '100', '111'], R: ['110', '101', '110', '101', '101'],
+  V: ['101', '101', '101', '101', '010'], D: ['110', '101', '101', '101', '110'], '1': ['010', '110', '010', '010', '111'],
+  '3': ['110', '001', '010', '001', '110'], '5': ['111', '100', '110', '001', '110'], '-': ['000', '000', '111', '000', '000'], ' ': ['000', '000', '000', '000', '000']
+};
+function drawPixelText(g, txt, x, y, col, s) {
+  s = s || 1; g.fillStyle = col; let cx = x;
+  for (const ch of txt) {
+    const gl = FONT3[ch];
+    if (gl) for (let r = 0; r < 5; r++) for (let c = 0; c < 3; c++) if (gl[r][c] === '1') g.fillRect(cx + c * s, y + r * s, s, s);
+    cx += 4 * s;
+  }
+}
+// Logotipo do Instituto Federal (grade de quadrados verdes + círculo vermelho)
+function drawIfcLogo(g, x, y, cell) {
+  const L = ['rg.', 'ggg', 'gg.', 'ggg'];
+  for (let r = 0; r < 4; r++) for (let c = 0; c < 3; c++) {
+    const ch = L[r][c], px = x + c * (cell + 1), py = y + r * (cell + 1);
+    if (ch === 'g') rect(g, px, py, cell, cell, '#0f9d58');
+    else if (ch === 'r') { if (cell <= 2) rect(g, px, py, cell, cell, '#e11d48'); else disc(g, px + (cell >> 1), py + (cell >> 1), cell >> 1, '#e11d48'); }
+  }
+}
+
+/* =========================================================================
+   2. GEOMETRIA DO MUNDO (baseada na foto aérea)
+   ========================================================================= */
+// Rodovia SC-135 na diagonal inferior
+const ROAD_W = 78;
+function roadTop(x) { return 1385 + x * 0.065; }
+
+// Borda inferior da mata nativa ao norte
+function forestNorthBottom(x) {
+  let b;
+  if (x < 300) b = 560 - (x / 300) * 245;
+  else if (x < 1660) b = 315;
+  else if (x < 1800) b = 315 - (x - 1660) / 140 * 95;
+  else b = 220;
+  return b + (noise1(x * 0.02) - 0.5) * 16 + (noise1(x * 0.09 + 7) - 0.5) * 6;
+}
+// Borda superior da mata a sudeste
+function forestSETop(x) {
+  if (x < 1580) return Infinity;
+  const base = 1230 - (x - 1580) * 0.3 + Math.max(0, 1640 - x) * 2;
+  return base + (noise1(x * 0.025 + 3) - 0.5) * 30 + (noise1(x * 0.1 + 9) - 0.5) * 10;
+}
+function forestSEBottom(x) { return roadTop(x) - 14; }
+
+// Ruas internas (asfalto com meio-fio)
+const ROADS = [
+  { name: 'avenida', pts: [[1350, 370], [1350, 1438]], w: 80 },
+  { name: 'norte', pts: [[310, 355], [1690, 355]], w: 50 },
+  { name: 'nordeste', pts: [[1690, 355], [2040, 690], [2040, 800]], w: 46 }
+];
+const DIRT_ROADS = [{ pts: [[310, 372], [320, 600], [320, 760]], w: 26 }];
+
+// Calçadas e pátios pavimentados [x, y, w, h]
+const PAVED = [
+  [290, 380, 1400, 14],      // calçada sul da rua norte
+  [1294, 394, 16, 960],      // calçada oeste da avenida
+  [1390, 394, 14, 416],      // calçada leste da avenida (norte)
+  [1390, 1155, 14, 190],     // calçada leste da avenida (sul)
+  [540, 394, 754, 470],      // pátio acadêmico
+  [430, 680, 120, 184],      // calçada oeste do prédio principal
+  [940, 864, 354, 130],      // frente do bloco administrativo
+  [1404, 430, 106, 116],     // entorno da copa
+  [1810, 290, 180, 150],     // entorno do refeitório
+  [2070, 490, 312, 275]      // base do ginásio
+];
+const GYM_PLAZA = [2030, 765, 355, 90];
+const SAND_COURT = [2110, 875, 160, 80];
+const AUDI_LAWN = [772, 398, 176, 162];
+const PARK_MAIN = [640, 1000, 650, 350];
+const PARK_EAST = [1404, 810, 110, 345];
+
+// Lagos (definidos por forma polar orgânica)
+function polarR(keys, ang) {
+  const a = ang * 180 / Math.PI;
+  let k0, k1, a0, a1, found = false;
+  for (let i = 0; i < keys.length; i++) {
+    if (keys[i][0] >= a) {
+      k1 = keys[i]; a1 = k1[0];
+      if (i > 0) { k0 = keys[i - 1]; a0 = k0[0]; } else { k0 = keys[keys.length - 1]; a0 = k0[0] - 360; }
+      found = true; break;
+    }
+  }
+  if (!found) { k0 = keys[keys.length - 1]; a0 = k0[0]; k1 = keys[0]; a1 = k1[0] + 360; }
+  let t = (a - a0) / (a1 - a0); t = t * t * (3 - 2 * t);
+  const r = k0[1] + (k1[1] - k0[1]) * t;
+  return r * (1 + 0.035 * Math.sin(ang * 5 + 1.3) + 0.02 * Math.sin(ang * 11 + 0.4));
+}
+const LAKE_DEFS = [
+  {
+    id: 'big', name: 'Lago Principal', cx: 1790, cy: 760, maxR: 330,
+    keys: [[-135, 300], [-100, 268], [-42, 165], [13, 195], [44, 270], [77, 262], [122, 268], [160, 230]],
+    colors: { edge: '#6aa97a', shallow: '#3f7f58', mid: '#30694b', deep: '#26573f', hl: '#94d3a3', dark: '#1d4633', spark: '#eafff1', foam: '#b9e3c2' },
+    inside(x, y, grow) { grow = grow || 0; const dx = x - this.cx, dy = y - this.cy, d = Math.hypot(dx, dy); if (d > this.maxR + grow + 10) return false; return d < polarR(this.keys, Math.atan2(dy, dx)) + grow; },
+    pierRow: 742
+  },
+  {
+    id: 'small', name: 'Lago Menor', cx: 2160, cy: 355, rx: 125, ry: 85, maxR: 148,
+    colors: { edge: '#6fb0a0', shallow: '#3f8a78', mid: '#2e7064', deep: '#235b52', hl: '#98dccb', dark: '#1b4740', spark: '#effffb', foam: '#c3ece0' },
+    inside(x, y, grow) {
+      grow = grow || 0; const dx = x - this.cx, dy = y - this.cy, a = Math.atan2(dy, dx);
+      const k = 1 + 0.07 * Math.sin(3 * a + 1) + 0.04 * Math.sin(7 * a + 2);
+      const ex = dx / ((this.rx + grow) * k), ey = dy / ((this.ry + grow) * k);
+      return ex * ex + ey * ey < 1;
+    }
+  }
+];
+
+// Locais com interação (portas) — coordenadas fiéis à foto
+const LOCATIONS = [
+  { id: 'guarita', name: 'Guarita / Pórtico de Entrada', desc: 'Controle de acesso principal do campus, ligado à Rodovia SC-135.',
+    rects: [[1339, 1352, 22, 28]], doors: [[1350, 1381]], label: [1350, 1320] },
+  { id: 'admin', name: 'Bloco Administrativo', desc: 'Direção-geral, secretaria acadêmica, protocolo e setores administrativos.',
+    rects: [[960, 860, 280, 92]], doors: [[1100, 953]], label: [1100, 854] },
+  { id: 'principal', name: 'Prédio Principal • Salas de Aula', desc: 'O maior bloco do campus: salas de aula, coordenações e corredores acadêmicos.',
+    rects: [[960, 420, 140, 280], [440, 690, 620, 120], [700, 810, 200, 40]], doors: [[1080, 701], [560, 811], [985, 811], [800, 851]], label: [750, 684] },
+  { id: 'labs', name: 'Laboratórios', desc: 'Laboratórios de química, biologia, informática e agroindústria em volta de um pátio interno.',
+    rects: [[600, 430, 160, 60], [560, 430, 60, 210], [620, 590, 120, 50]], doors: [[700, 491], [680, 641]], label: [680, 424] },
+  { id: 'estufas', name: 'Estufas Agrícolas', desc: 'Cultivo protegido para as aulas práticas de Agronomia e Agropecuária.',
+    rects: [[360, 516, 170, 46], [360, 582, 170, 46]], doors: [[445, 563], [445, 629]], label: [445, 510] },
+  { id: 'barracao', name: 'Barracão / Garagem', desc: 'Garagem de máquinas agrícolas, tratores e veículos institucionais.',
+    rects: [[196, 606, 62, 38], [150, 630, 64, 38], [104, 654, 64, 38], [56, 678, 66, 48]], doors: [[96, 728]], label: [165, 598] },
+  { id: 'auditorio', name: 'Auditório', desc: 'Palestras, formaturas, mostras científicas e eventos culturais.',
+    rects: [[828, 408, 64, 132], [792, 426, 136, 62], [810, 488, 100, 32]], doors: [[860, 541]], label: [860, 400] },
+  { id: 'biblioteca', name: 'Biblioteca e Bloco Pedagógico', desc: 'Acervo bibliográfico, salas de estudo em grupo e setor pedagógico.',
+    rects: [[1120, 410, 130, 170], [1250, 418, 30, 154]], doors: [[1185, 581]], label: [1200, 404] },
+  { id: 'copa', name: 'Copa / Cantina', desc: 'Cafés, lanches e um cantinho de convivência à beira do lago.',
+    rects: [[1410, 440, 90, 92]], doors: [[1455, 533]], label: [1455, 434] },
+  { id: 'refeitorio', name: 'Refeitório', desc: 'Refeições diárias para estudantes e servidores, incluindo alunos do internato.',
+    rects: [[1820, 300, 160, 130]], doors: [[1900, 431]], label: [1900, 294] },
+  { id: 'ginasio', name: 'Ginásio Poliesportivo', desc: 'Quadra coberta, vestiários e espaço para Educação Física, jogos e eventos.',
+    rects: [[2160, 500, 210, 260], [2080, 560, 80, 200]], doors: [[2265, 761], [2120, 761]], label: [2225, 494] }
+];
+
+// Áreas genéricas (para o indicador quando não há prédio por perto)
+const ZONES = [
+  { name: 'Estacionamento Principal', r: PARK_MAIN },
+  { name: 'Estacionamento Leste', r: PARK_EAST },
+  { name: 'Pátio do Ginásio', r: GYM_PLAZA },
+  { name: 'Quadra de Areia', r: SAND_COURT },
+  { name: 'Avenida Interna', r: [1294, 380, 124, 960] },
+  { name: 'Rua Norte do Campus', r: [290, 330, 1400, 64] },
+  { name: 'Pátio Acadêmico', r: [540, 394, 754, 470] }
+];
+
+// Listas globais preenchidas durante a construção do mundo
+const SOLIDS = [];    // retângulos de colisão AABB {x,y,w,h,tag}
+const SPRITES = [];   // objetos ordenados por profundidade (árvores, postes, bancos...)
+const DECOR = [];     // decorações sobre a água (píer, barco, vitórias-régias)
+const OVERLAYS = [];  // coberturas desenhadas por cima do jogador (pórtico)
+const LAKES = [];     // lagos construídos (frames animados + colisão)
+const TREE_POS = [];  // posições de árvores já colocadas
+let bg, bgx;          // canvas do cenário estático
+const PAT = {};       // padrões de textura
+
+function addSolid(x, y, w, h, tag) { SOLIDS.push({ x: x, y: y, w: w, h: h, tag: tag || '' }); }
+
+
+/* =========================================================================
+   3. TEXTURAS PROCEDURAIS (padrões repetíveis em pixel art)
+   ========================================================================= */
+function noiseTile(size, palette, weights, seed, post) {
+  const [c, g] = makeCanvas(size, size);
+  const img = g.createImageData(size, size), d = img.data;
+  const R = mulberry32(seed);
+  const total = weights.reduce((a, b) => a + b, 0);
+  const cols = palette.map(hexToRgb);
+  for (let i = 0; i < size * size; i++) {
+    let r = R() * total, k = 0;
+    while (k < weights.length - 1 && r >= weights[k]) { r -= weights[k]; k++; }
+    const col = cols[k];
+    d[i * 4] = col[0]; d[i * 4 + 1] = col[1]; d[i * 4 + 2] = col[2]; d[i * 4 + 3] = 255;
+  }
+  g.putImageData(img, 0, 0);
+  if (post) post(g, size, R);
+  return c;
+}
+function buildPatterns() {
+  const grass = noiseTile(64, ['#5a9e3e', '#579b3c', '#5ea242', '#53963a', '#4b8c35'], [30, 30, 18, 16, 6], 11, (g, s, R) => {
+    for (let i = 0; i < 12; i++) {
+      const x = 1 + Math.floor(R() * (s - 2)), y = 2 + Math.floor(R() * (s - 3));
+      rect(g, x, y, 1, 1, '#3f7f2d'); rect(g, x - 1, y - 1, 1, 1, '#3f7f2d'); rect(g, x + 1, y - 1, 1, 1, '#3f7f2d'); rect(g, x, y - 2, 1, 1, '#76bb52');
+    }
+  });
+  const asphalt = noiseTile(32, ['#4b4e54', '#484b51', '#4f5258', '#44474d', '#5a5d63'], [30, 30, 20, 15, 5], 22);
+  const concrete = noiseTile(16, ['#c3c6c9', '#bfc2c5', '#c8cbce', '#b9bcbf'], [35, 30, 25, 10], 33, (g) => {
+    g.fillStyle = '#a7abaf';
+    g.fillRect(0, 0, 16, 1); g.fillRect(0, 8, 16, 1);
+    g.fillRect(0, 0, 1, 8); g.fillRect(8, 0, 1, 8); g.fillRect(4, 8, 1, 8); g.fillRect(12, 8, 1, 8);
+  });
+  const dirt = noiseTile(32, ['#9a6a42', '#93633d', '#a1714a', '#8a5c38', '#ab7c53'], [30, 30, 20, 12, 8], 44, (g, s, R) => {
+    for (let i = 0; i < 10; i++) rect(g, Math.floor(R() * s), Math.floor(R() * s), 1, 1, '#c09468');
+  });
+  const sand = noiseTile(16, ['#e2cd96', '#dcc68e', '#e8d5a2', '#d6bf86'], [35, 30, 20, 15], 55);
+  const soil = noiseTile(16, ['#5a3d26', '#4f3521', '#654630', '#47301e'], [35, 30, 20, 15], 66);
+  const pavers = noiseTile(16, ['#b8aea4', '#b1a79c', '#c0b6ab'], [40, 35, 25], 77, (g) => {
+    g.fillStyle = '#958b81';
+    g.fillRect(0, 0, 16, 1); g.fillRect(0, 4, 16, 1); g.fillRect(0, 8, 16, 1); g.fillRect(0, 12, 16, 1);
+    for (let r = 0; r < 4; r++) { const o = (r % 2) * 4; g.fillRect(o, r * 4, 1, 4); g.fillRect(o + 8, r * 4, 1, 4); }
+  });
+  const gravel = noiseTile(16, ['#a49a88', '#978d7c', '#b1a795', '#8a8171'], [35, 30, 20, 15], 88);
+  const forestFloor = noiseTile(16, ['#1b3a21', '#18341e', '#1f4125', '#15301b'], [35, 30, 20, 15], 99);
+  for (const [k, v] of Object.entries({ grass, asphalt, concrete, dirt, sand, soil, pavers, gravel, forestFloor })) PAT[k] = bgx.createPattern(v, 'repeat');
+}
+
+// Pincel quadrado ao longo de uma polilinha (bordas serrilhadas = pixel art)
+function strokePolyline(g, pts, width, style) {
+  g.fillStyle = style;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const x0 = pts[i][0], y0 = pts[i][1], x1 = pts[i + 1][0], y1 = pts[i + 1][1];
+    const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+    const s = Math.round(width / ((Math.abs(dx) + Math.abs(dy)) / len));
+    const steps = Math.ceil(len);
+    for (let k = 0; k <= steps; k++) {
+      const t = k / steps, cx = Math.round(x0 + dx * t), cy = Math.round(y0 + dy * t);
+      g.fillRect(cx - (s >> 1), cy - (s >> 1), s, s);
+    }
+  }
+}
+function dashPolyline(g, pts, color, dash, gap, thick, skip) {
+  g.fillStyle = color; let acc = 0;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const x0 = pts[i][0], y0 = pts[i][1], x1 = pts[i + 1][0], y1 = pts[i + 1][1];
+    const len = Math.hypot(x1 - x0, y1 - y0), steps = Math.ceil(len);
+    for (let k = 0; k < steps; k++) {
+      const t = k / steps, cx = Math.round(x0 + (x1 - x0) * t), cy = Math.round(y0 + (y1 - y0) * t);
+      let skipped = false;
+      if (skip) for (const s of skip) if (cx >= s[0] && cx <= s[0] + s[2] && cy >= s[1] && cy <= s[1] + s[3]) skipped = true;
+      if (!skipped && (acc % (dash + gap)) < dash) g.fillRect(cx - (thick >> 1), cy - (thick >> 1), thick, thick);
+      acc += len / steps;
+    }
+  }
+}
+
+/* =========================================================================
+   4. RENDERIZADOR DE PRÉDIOS EM PERSPECTIVA 3/4
+   - shape(x,y): pegada do telhado (vista de cima)
+   - roof(x,y,ed): cor do telhado (ed = distância até a borda)
+   - wall(x,k,len,info): parede frontal extrudada abaixo do telhado
+   ========================================================================= */
+const P = {
+  wall: C('#eef1f3'), eave: C('#b9c1c8'), wallEdge: C('#c9d0d6'),
+  green: C('#0f8a57'), greenD: C('#0a6640'), greenL: C('#16b06f'),
+  glass: C('#2c4763'), glassL: C('#79a6cc'), glassD: C('#1d3247'), frame: C('#c9d0d6')
+};
+function edgeDist(inside, x, y, max) {
+  for (let k = 1; k <= max; k++) if (!inside(x - k, y) || !inside(x + k, y) || !inside(x, y - k) || !inside(x, y + k)) return k;
+  return max + 1;
+}
+function renderBuilding(o) {
+  const w = o.w, h = o.h, roofH = o.h - o.wallH, inside = o.shape;
+  const [c, g] = makeCanvas(w, h);
+  const img = g.createImageData(w, h), d = img.data;
+  const put = (x, y, col) => { const i = (y * w + x) * 4; d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = col.length > 3 ? col[3] : 255; };
+  // Telhado
+  for (let y = 0; y < roofH; y++) for (let x = 0; x < w; x++) if (inside(x, y)) put(x, y, o.roof(x, y, edgeDist(inside, x, y, 5)));
+  // Paredes frontais
+  const rb = new Int16Array(w).fill(-1);
+  for (let x = 0; x < w; x++) for (let y = roofH - 1; y >= 0; y--) if (inside(x, y)) { rb[x] = y; break; }
+  for (let x = 0; x < w; x++) {
+    const yb = rb[x]; if (yb < 0) continue;
+    const len = o.wallMode === 'toBase' ? (h - 1 - yb) : o.wallH;
+    const info = { left: x === 0 || rb[x - 1] < 0, right: x === w - 1 || rb[x + 1] < 0, yb: yb, w: w };
+    for (let k = 0; k < len; k++) { const y = yb + 1 + k; if (y >= h) break; const col = o.wall(x, k, len, info); if (col) put(x, y, col); }
+  }
+  // Contorno escuro interno (estilo 16-bit)
+  const a = new Uint8Array(w * h);
+  for (let i = 0; i < w * h; i++) a[i] = d[i * 4 + 3];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (!a[i]) continue;
+    const edge = x === 0 || y === 0 || x === w - 1 || y === h - 1 || !a[i - 1] || !a[i + 1] || !a[i - w] || !a[i + w];
+    if (edge) { const p = i * 4; d[p] = d[p] * 0.42; d[p + 1] = d[p + 1] * 0.42; d[p + 2] = d[p + 2] * 0.48; d[p + 3] = Math.max(d[p + 3], 235); }
+  }
+  g.putImageData(img, 0, 0);
+  if (o.decorate) o.decorate(g, w, h, roofH);
+  return c;
+}
+// Telhado plano com platibanda (parapeito) e sombra interna
+function flatRoof(base, dark, light, par) {
+  return (x, y, ed) => {
+    if (ed <= 1) return light;
+    if (ed === 2) return par;
+    if (ed === 3) return dark;
+    const n = hash2(x * 3, y * 7);
+    if (n < 0.08) return shade(base, 0.93);
+    if (n > 0.965) return shade(base, 1.07);
+    return base;
+  };
+}
+// Telhado colonial de quatro águas (telhas)
+function hipRoof(w, rh, cols) {
+  return (x, y) => {
+    const dl = x, dr = w - 1 - x, dt = y, db = rh - 1 - y;
+    const m = Math.min(dl, dr, dt, db);
+    if (m === 0) return cols.eave;
+    if (dl === dt || dl === db || dr === dt || dr === db) return cols.ridge;
+    if (Math.abs(dt - db) <= 1 && dl > rh / 2 - 1 && dr > rh / 2 - 1) return cols.ridge;
+    let face = m === dt ? 'T' : m === db ? 'B' : m === dl ? 'L' : 'R';
+    const c = cols[face];
+    if (face === 'T' || face === 'B') { const row = Math.floor(y / 3); if (y % 3 === 0) return shade(c, 0.8); if ((x + row * 2) % 5 === 0) return shade(c, 0.88); }
+    else { const col = Math.floor(x / 3); if (x % 3 === 0) return shade(c, 0.8); if ((y + col * 2) % 5 === 0) return shade(c, 0.88); }
+    if (hash2(x, y) < 0.07) return shade(c, 1.08);
+    return c;
+  };
+}
+// Parede genérica: branca, base verde IFC, janelas e portas
+function makeWall(o) {
+  const base = o.base || P.wall, trim = o.trim || P.green, trimD = o.trimD || P.greenD;
+  const trimH = o.trimH === undefined ? 3 : o.trimH;
+  const glass = o.glass || P.glass, glassL = o.glassL || P.glassL, frame = o.frame || P.frame;
+  const sill = shade(base, 0.8), eaveShade = shade(base, 0.84), edgeR = shade(base, 0.8), edgeL = shade(base, 0.91), noiseC = shade(base, 0.96);
+  return (x, k, len, info) => {
+    const kb = len - 1 - k;
+    if (o.doors) for (const dr of o.doors) {
+      if (x >= dr.x - 1 && x < dr.x + dr.w + 1 && (kb === dr.h || kb === dr.h + 1)) return kb === dr.h ? trimD : trim;
+      if (x >= dr.x && x < dr.x + dr.w && kb < dr.h) {
+        const lx = x - dr.x;
+        if (lx === 0 || lx === dr.w - 1 || kb === dr.h - 1) return o.doorFrame || trim;
+        if (lx === (dr.w >> 1)) return frame;
+        return ((lx + kb) % 5 === 0) ? glassL : (o.doorFill || P.glassD);
+      }
+    }
+    if (kb < trimH) return kb === 0 ? trimD : trim;
+    if (k === 0) return P.eave;
+    if (k === 1) return eaveShade;
+    if (o.stripe !== undefined && kb === o.stripe) return trim;
+    if (o.windows) {
+      let skip = false;
+      if (o.skip) for (const s of o.skip) if (x >= s[0] && x < s[1]) skip = true;
+      if (!skip) {
+        const wn = o.windows, m = (((x - wn.offset) % wn.period) + wn.period) % wn.period;
+        if (m < wn.width && x > 1 && x < info.w - 2) {
+          for (const r of wn.rows) {
+            if (kb >= r[0] && kb <= r[1]) {
+              if (o.shutter && (m === 0 || m === wn.width - 1)) return o.shutter;
+              if (m === 0 || m === wn.width - 1 || kb === r[0] || kb === r[1]) return frame;
+              return ((m + kb) % 6 === 0) ? glassL : glass;
+            }
+            if (kb === r[0] - 1) return sill;
+          }
+        }
+      }
+    }
+    if (info.left) return edgeL;
+    if (info.right) return edgeR;
+    return hash2(x * 7, kb * 13) < 0.05 ? noiseC : base;
+  };
+}
+// Pequenos detalhes de telhado
+function acUnit(g, x, y) { rect(g, x, y, 8, 6, '#6f777e'); rect(g, x + 1, y + 1, 6, 4, '#d9dee2'); rect(g, x + 3, y + 2, 2, 2, '#59616a'); }
+function skylight(g, x, y, w, h) { rect(g, x, y, w, h, '#55728c'); rect(g, x + 1, y + 1, w - 2, h - 2, '#8fb4d1'); for (let i = x + 4; i < x + w - 1; i += 6) rect(g, i, y + 1, 1, h - 2, '#6d8fac'); }
+function vent(g, x, y) { rect(g, x, y, 5, 5, '#5d656c'); rect(g, x + 1, y + 1, 3, 3, '#2f353b'); }
+
+/* =========================================================================
+   5. SPRITES PROCEDURAIS: ÁRVORES, CARROS, OBJETOS E O ESTUDANTE
+   ========================================================================= */
+const TREE_PALS = {
+  forestA: ['#173a22', '#215231', '#2f6d3d', '#47894a'],
+  forestB: ['#1a3f2c', '#24583a', '#357549', '#55985a'],
+  forestC: ['#24401c', '#355c25', '#4c7a31', '#6f9c42'],
+  forestD: ['#14301c', '#1d4428', '#2a5c34', '#3d7a43'],
+  forestE: ['#2a4a1f', '#3e6a2a', '#5a8c38', '#86b04c'],
+  park1: ['#1f4d27', '#2e6b35', '#46904a', '#6db35f'],
+  park2: ['#2b5221', '#3f722c', '#5c973d', '#8cc05a'],
+  park3: ['#1e4a3a', '#2a6650', '#3e8a68', '#62ad85'],
+  ipeAmarelo: ['#6b5212', '#a77f14', '#d9ac1e', '#f6d84a'],
+  ipeRosa: ['#5a2346', '#8a2f68', '#c0508f', '#e88abf']
+};
+function makeRoundTree(size, palName, seed, noTrunk) {
+  const R = mulberry32(seed);
+  const pal = TREE_PALS[palName].map(C);
+  const w = size + 4, h = noTrunk ? size + 3 : size + 9;
+  const [c, g] = makeCanvas(w, h);
+  const cx = w / 2, cy = size / 2 + 2, R0 = size / 2;
+  if (!noTrunk) {
+    const tx = Math.floor(cx) - 2, ty = Math.floor(cy + R0 * 0.3);
+    rect(g, tx, ty, 4, h - 2 - ty, '#6b4a2e'); rect(g, tx + 3, ty, 1, h - 2 - ty, '#4a3220'); rect(g, tx, ty, 1, h - 2 - ty, '#8a6440');
+    rect(g, tx - 1, h - 3, 6, 1, '#4a3220');
+  }
+  const blobs = [{ x: cx, y: cy, r: R0 * 0.8 }];
+  const n = 4 + Math.floor(R() * 3);
+  for (let i = 0; i < n; i++) {
+    const a = R() * Math.PI * 2, dist = R0 * (0.28 + R() * 0.25);
+    blobs.push({ x: cx + Math.cos(a) * dist, y: cy + Math.sin(a) * dist * 0.85, r: R0 * (0.42 + R() * 0.18) });
+  }
+  blobs.sort((a, b) => a.y - b.y);
+  const img = g.getImageData(0, 0, w, h), d = img.data;
+  const can = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    let top = null;
+    for (const b of blobs) { const dx = x + 0.5 - b.x, dy = y + 0.5 - b.y; if (dx * dx + dy * dy <= b.r * b.r) top = b; }
+    if (!top) continue;
+    const lx = (x + 0.5 - top.x) / top.r, ly = (y + 0.5 - top.y) / top.r;
+    const loc = -(lx * 0.55 + ly * 0.8);
+    const glob = -((x - cx) * 0.35 + (y - cy) * 0.65) / R0;
+    const v = 0.55 * loc + 0.45 * glob + (bayer(x, y) - 0.5) * 0.45;
+    let idx = v > 0.55 ? 3 : v > 0.05 ? 2 : v > -0.45 ? 1 : 0;
+    if (lx * lx + ly * ly > 0.8 && ly > 0.2) idx = Math.max(0, idx - 1);
+    const col = pal[idx], i = (y * w + x) * 4;
+    d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255; can[y * w + x] = 1;
+  }
+  const out = shade(pal[0], 0.6);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const i = y * w + x; if (can[i] || d[i * 4 + 3]) continue;
+    if ((x > 0 && can[i - 1]) || (x < w - 1 && can[i + 1]) || (y > 0 && can[i - w]) || (y < h - 1 && can[i + w])) {
+      d[i * 4] = out[0]; d[i * 4 + 1] = out[1]; d[i * 4 + 2] = out[2]; d[i * 4 + 3] = 255;
+    }
+  }
+  g.putImageData(img, 0, 0);
+  return { c: c, w: w, h: h, ox: Math.floor(cx), oy: noTrunk ? h - 2 : h - 2, size: size };
+}
+// Araucária (pinheiro típico de Santa Catarina) com copa em "candelabro"
+function makeAraucaria(size, seed) {
+  const R = mulberry32(seed);
+  const w = size + 4, h = size + 18;
+  const [c, g] = makeCanvas(w, h);
+  const cx = Math.floor(w / 2);
+  rect(g, cx - 1, Math.floor(size * 0.3), 3, h - 2 - Math.floor(size * 0.3), '#5a3c22'); rect(g, cx + 1, Math.floor(size * 0.3), 1, h - 2 - Math.floor(size * 0.3), '#3d2815');
+  const tiers = [[size * 0.46, size * 0.36, size * 0.11], [size * 0.3, size * 0.5, size * 0.15]];
+  const pal = ['#1d3d22', '#2a5530', '#3b7040', '#5a8f52'];
+  for (const [ty, rx, ry] of tiers) {
+    for (let dy = -Math.ceil(ry); dy <= Math.ceil(ry); dy++) {
+      const hw = Math.floor(rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))));
+      for (let dx = -hw; dx <= hw; dx++) {
+        const x = cx + dx, y = Math.round(ty + dy);
+        const v = -(dy / ry) * 0.7 - (dx / rx) * 0.3 + (bayer(x, y) - 0.5) * 0.6 + (R() - 0.5) * 0.2;
+        const idx = Math.abs(dx) === hw || dy === Math.ceil(ry) ? 0 : v > 0.45 ? 3 : v > 0 ? 2 : 1;
+        rect(g, x, y, 1, 1, pal[idx]);
+      }
+    }
+  }
+  addOuterOutline(g, w, h, [16, 32, 20]);
+  return { c: c, w: w, h: h, ox: cx, oy: h - 2, size: size };
+}
+function buildTreeVariants() {
+  const V = { forest: [], park: [], bush: [], flower: [], pine: [] };
+  const fp = ['forestA', 'forestB', 'forestC', 'forestD', 'forestE'];
+  let s = 100;
+  for (const p of fp) for (const size of [26, 30, 34, 38]) V.forest.push(makeRoundTree(size, p, s++));
+  for (const p of ['park1', 'park2', 'park3']) for (const size of [22, 26, 30]) V.park.push(makeRoundTree(size, p, s++));
+  for (const p of ['park1', 'park2', 'forestE']) V.bush.push(makeRoundTree(11, p, s++, true));
+  V.flower.push(makeRoundTree(26, 'ipeAmarelo', s++), makeRoundTree(24, 'ipeRosa', s++));
+  V.pine.push(makeAraucaria(30, s++), makeAraucaria(36, s++));
+  return V;
+}
+
+// Carro visto de cima (frente apontando para cima)
+const CAR_COLORS = ['#f4f5f7', '#f4f5f7', '#e9ecef', '#c0c5ca', '#a9afb5', '#8a9097', '#2b2f36', '#1f2226', '#b3262e', '#c9372c', '#24508f', '#2f6fb5', '#5b6770', '#e2b33a', '#2f7a4c', '#7a2f3a'];
+function makeCar(hex) {
+  const [c, g] = makeCanvas(18, 30);
+  const body = C(hex), bodyD = rgbStr(shade(body, 0.74)), bodyL = rgbStr(shade(body, 1.15)), bodyS = rgbStr(body);
+  rect(g, 1, 6, 2, 5, '#17171c'); rect(g, 15, 6, 2, 5, '#17171c'); rect(g, 1, 20, 2, 5, '#17171c'); rect(g, 15, 20, 2, 5, '#17171c');
+  rect(g, 3, 2, 12, 26, bodyS); rect(g, 2, 4, 14, 22, bodyS);
+  rect(g, 14, 4, 2, 22, bodyD); rect(g, 2, 4, 1, 22, bodyL);
+  rect(g, 5, 3, 8, 1, bodyL);
+  rect(g, 4, 8, 10, 4, '#2b3644'); rect(g, 5, 8, 3, 1, '#8aa7c0');
+  rect(g, 4, 12, 10, 8, bodyL); rect(g, 5, 13, 8, 1, 'rgba(255,255,255,0.25)');
+  rect(g, 4, 20, 10, 3, '#2b3644');
+  rect(g, 3, 12, 1, 8, '#3a4655'); rect(g, 14, 12, 1, 8, '#3a4655');
+  rect(g, 4, 2, 2, 1, '#fff6c8'); rect(g, 12, 2, 2, 1, '#fff6c8');
+  rect(g, 3, 27, 2, 1, '#d23a3a'); rect(g, 13, 27, 2, 1, '#d23a3a');
+  rect(g, 1, 10, 1, 2, bodyD); rect(g, 16, 10, 1, 2, bodyD);
+  addOuterOutline(g, 18, 30, [18, 18, 24]);
+  return c;
+}
+const CAR_CACHE = {};
+function getCar(hex, quarter) {
+  const key = hex + quarter;
+  if (!CAR_CACHE[key]) { const base = CAR_CACHE[hex + '0'] || (CAR_CACHE[hex + '0'] = makeCar(hex)); CAR_CACHE[key] = quarter ? rotateCanvas(base, quarter) : base; }
+  return CAR_CACHE[key];
+}
+
+// Objetos menores do cenário
+function makeLamp() {
+  const [c, g] = makeCanvas(9, 32);
+  rect(g, 3, 6, 2, 24, '#5d646b'); rect(g, 3, 6, 1, 24, '#8a9299');
+  rect(g, 1, 3, 7, 3, '#3d4349'); rect(g, 2, 6, 5, 1, '#fff2b8');
+  rect(g, 2, 29, 5, 2, '#4a5056');
+  addOuterOutline(g, 9, 32, [20, 22, 26]);
+  return c;
+}
+function makeBench() {
+  const [c, g] = makeCanvas(18, 10);
+  rect(g, 1, 1, 16, 3, '#6b4423'); rect(g, 1, 1, 16, 1, '#8a5a2e');
+  rect(g, 1, 5, 16, 3, '#9a6634'); rect(g, 1, 5, 16, 1, '#b97e44');
+  rect(g, 2, 8, 2, 2, '#2f2f35'); rect(g, 14, 8, 2, 2, '#2f2f35');
+  addOuterOutline(g, 18, 10, [30, 20, 12]);
+  return c;
+}
+function makeUmbrellaTable() {
+  const [c, g] = makeCanvas(22, 24);
+  ellipseFill(g, 11, 19, 6, 3, '#e5e7eb'); rect(g, 6, 19, 10, 1, '#b8bcc2');
+  rect(g, 10, 8, 2, 12, '#7a7f86');
+  for (let dy = -6; dy <= 6; dy++) {
+    const hw = Math.floor(10 * Math.sqrt(1 - (dy * dy) / 36));
+    for (let dx = -hw; dx <= hw; dx++) {
+      const seg = Math.floor(((Math.atan2(dy, dx) + Math.PI) / (Math.PI * 2)) * 8);
+      rect(g, 11 + dx, 7 + dy, 1, 1, seg % 2 ? '#f97316' : '#fff7ed');
+    }
+  }
+  addOuterOutline(g, 22, 24, [40, 24, 12]);
+  return c;
+}
+function makeTotem() {
+  const [c, g] = makeCanvas(30, 42);
+  rect(g, 4, 30, 3, 8, '#7a8188'); rect(g, 23, 30, 3, 8, '#7a8188');
+  rect(g, 1, 2, 28, 28, '#0a6640'); rect(g, 2, 3, 26, 26, '#0f8a57'); rect(g, 2, 3, 26, 1, '#16b06f');
+  drawIfcLogo(g, 5, 7, 2);
+  drawPixelText(g, 'IFC', 15, 8, '#ffffff');
+  rect(g, 15, 15, 11, 1, '#ffffff');
+  drawPixelText(g, 'SC', 15, 19, '#d1fae5');
+  rect(g, 0, 37, 30, 4, '#b9bec3'); rect(g, 0, 37, 30, 1, '#dadfe3');
+  addOuterOutline(g, 30, 42, [12, 30, 22]);
+  return c;
+}
+function makePillar() {
+  const [c, g] = makeCanvas(8, 30);
+  rect(g, 2, 0, 4, 28, '#e7ecef'); rect(g, 5, 0, 1, 28, '#aab3ba'); rect(g, 2, 0, 1, 28, '#ffffff');
+  rect(g, 1, 26, 6, 3, '#9aa3ab');
+  addOuterOutline(g, 8, 30, [22, 30, 36]);
+  return c;
+}
+// Cobertura arqueada verde-azulada do pórtico de entrada
+function makeCanopy(w, h) {
+  const [c, g] = makeCanvas(w, h + 5);
+  const base = C('#2f9e9a');
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const u = x / (w - 1);
+    const b = 0.78 + 0.32 * Math.cos((u - 0.32) * Math.PI * 1.15);
+    let col = shade(base, b);
+    if (y % 7 === 0) col = shade(col, 0.82);
+    if (Math.abs(u - 0.3) < 0.02) col = C('#9ff0e6');
+    rect(g, x, y, 1, 1, rgbStr(col));
+  }
+  rect(g, 0, h, w, 3, '#1d6a67'); rect(g, 0, h + 3, w, 1, '#14504e');
+  rect(g, 0, 0, w, 1, '#7fd9d1');
+  addOuterOutline(g, w, h + 5, [12, 40, 40]);
+  return c;
+}
+
+// O estudante (16x24) — 4 direções x 4 quadros
+function drawStudent(g, dir, f) {
+  const Px = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
+  const SK = '#f2c28c', SKD = '#d79a62', HA = '#3a2618', HAL = '#6b4529', SH = '#10b981', SHD = '#0a8a5f', SHL = '#6ee7b7',
+    PA = '#2c4472', PAD = '#1d2f55', SO = '#1d1d24', SOH = '#3a3a46', BG = '#8b5cf6', BGD = '#6d3fe0', BGL = '#b69cff', EYE = '#1a1a22', WH = '#f8fafc';
+  const step = f === 1 ? 1 : (f === 3 ? -1 : 0);
+  if (dir === 'down' || dir === 'up') {
+    const hL = step === 1 ? 4 : (step === -1 ? 2 : 3), hR = step === -1 ? 4 : (step === 1 ? 2 : 3);
+    Px(4, 17, 8, 1, PA);
+    Px(4, 18, 3, hL, PA); Px(6, 18, 1, hL, PAD); Px(4, 18 + hL, 3, 2, SO); Px(4, 18 + hL, 1, 1, SOH);
+    Px(9, 18, 3, hR, PA); Px(9, 18, 1, hR, PAD); Px(9, 18 + hR, 3, 2, SO); Px(9, 18 + hR, 1, 1, SOH);
+    Px(4, 11, 8, 6, SH); Px(4, 15, 8, 2, SHD);
+    const aL = step === 1 ? 2 : (step === -1 ? 4 : 3), aR = step === -1 ? 2 : (step === 1 ? 4 : 3);
+    Px(2, 11, 2, 2, SH); Px(2, 13, 2, aL, SK); Px(2, 12 + aL, 2, 1, SKD);
+    Px(12, 11, 2, 2, SH); Px(12, 13, 2, aR, SK); Px(12, 12 + aR, 2, 1, SKD);
+    if (dir === 'down') {
+      Px(6, 11, 4, 1, WH); Px(7, 12, 2, 1, SHL);
+      Px(5, 11, 1, 5, BG); Px(10, 11, 1, 5, BG);
+      Px(4, 2, 8, 8, SK); Px(4, 9, 8, 1, SKD);
+      Px(4, 1, 8, 4, HA); Px(3, 2, 1, 6, HA); Px(12, 2, 1, 6, HA); Px(5, 5, 2, 1, HA); Px(9, 5, 2, 1, HA); Px(6, 1, 3, 1, HAL);
+      Px(6, 7, 1, 2, EYE); Px(9, 7, 1, 2, EYE); Px(7, 9, 2, 1, '#c0704a');
+      Px(7, 10, 2, 1, SKD);
+    } else {
+      Px(5, 11, 6, 6, BG); Px(5, 11, 6, 1, BGL); Px(5, 16, 6, 1, BGD); Px(6, 13, 4, 2, BGD);
+      Px(4, 1, 8, 9, HA); Px(6, 1, 3, 1, HAL); Px(5, 3, 1, 2, HAL);
+      Px(3, 5, 1, 2, SK); Px(12, 5, 1, 2, SK); Px(6, 10, 4, 1, SKD);
+    }
+  } else { // 'right' (a esquerda é o espelho)
+    if (step === 0) { Px(6, 17, 4, 1, PA); Px(6, 18, 4, 3, PA); Px(6, 18, 1, 3, PAD); Px(6, 21, 5, 2, SO); Px(6, 21, 1, 1, SOH); }
+    else {
+      const a = step === 1 ? PA : PAD, b = step === 1 ? PAD : PA;
+      Px(6, 17, 4, 1, PA);
+      Px(4, 18, 3, 3, b); Px(3, 21, 3, 2, SO);
+      Px(8, 18, 3, 3, a); Px(9, 21, 3, 2, SO); Px(9, 21, 1, 1, SOH);
+    }
+    Px(5, 11, 6, 6, SH); Px(5, 15, 6, 2, SHD);
+    Px(3, 11, 3, 6, BG); Px(3, 11, 3, 1, BGL); Px(3, 16, 3, 1, BGD);
+    if (step === 0) { Px(7, 11, 2, 3, SHD); Px(7, 14, 2, 2, SK); }
+    else if (step === 1) { Px(8, 11, 2, 2, SHD); Px(9, 13, 2, 2, SK); }
+    else { Px(6, 11, 2, 2, SHD); Px(5, 13, 2, 2, SK); }
+    Px(5, 2, 7, 8, SK); Px(5, 9, 7, 1, SKD);
+    Px(5, 1, 7, 4, HA); Px(5, 5, 3, 3, HA); Px(11, 4, 1, 1, HA); Px(7, 1, 3, 1, HAL);
+    Px(10, 6, 1, 2, EYE); Px(12, 7, 1, 1, SK); Px(8, 6, 1, 2, SKD); Px(6, 10, 3, 1, SKD);
+  }
+}
+function buildPlayerFrames() {
+  const F = {};
+  for (const d of ['down', 'up', 'right']) {
+    F[d] = [];
+    for (let f = 0; f < 4; f++) { const [c, g] = makeCanvas(16, 24); drawStudent(g, d, f); addOuterOutline(g, 16, 24, [20, 20, 28]); F[d].push(c); }
+  }
+  F.left = F.right.map(src => { const [m, g] = makeCanvas(16, 24); g.translate(16, 0); g.scale(-1, 1); g.drawImage(src, 0, 0); return m; });
+  return F;
+}
+
+
+/* =========================================================================
+   6. LAGOS ANIMADOS, PÍER E COLISÃO DA ÁGUA
+   ========================================================================= */
+function buildLakes() {
+  for (const def of LAKE_DEFS) {
+    const pad = def.maxR + 14;
+    const x0 = Math.max(0, Math.floor(def.cx - pad)), y0 = Math.max(0, Math.floor(def.cy - pad));
+    const x1 = Math.min(W, Math.ceil(def.cx + pad)), y1 = Math.min(H, Math.ceil(def.cy + pad));
+    const lw = x1 - x0, lh = y1 - y0;
+
+    // Pré-calcula máscara e distância à margem para ondas e espuma
+    const mask = new Uint8Array(lw * lh);
+    const bankMask = new Uint8Array(lw * lh);
+    for (let y = 0; y < lh; y++) {
+      for (let x = 0; x < lw; x++) {
+        const wx = x0 + x, wy = y0 + y;
+        if (def.inside(wx, wy, 4)) bankMask[y * lw + x] = 1;
+        if (def.inside(wx, wy, 0)) mask[y * lw + x] = 1;
+      }
+    }
+    const dist = new Uint8Array(lw * lh);
+    for (let y = 0; y < lh; y++) {
+      for (let x = 0; x < lw; x++) {
+        const i = y * lw + x;
+        if (!mask[i]) continue;
+        let d = 22;
+        for (let r = 1; r <= 21; r += 2) {
+          if (x - r < 0 || x + r >= lw || y - r < 0 || y + r >= lh ||
+              !mask[i - r] || !mask[i + r] || !mask[i - r * lw] || !mask[i + r * lw]) { d = r; break; }
+        }
+        dist[i] = d;
+      }
+    }
+
+    // Desenha margem úmida/grama escura no cenário estático
+    const cEdge = C(def.colors.edge), cShallow = C(def.colors.shallow), cMid = C(def.colors.mid),
+          cDeep = C(def.colors.deep), cHl = C(def.colors.hl), cDark = C(def.colors.dark),
+          cSpark = C(def.colors.spark), cFoam = C(def.colors.foam);
+    const [bc, bg2] = makeCanvas(lw, lh);
+    const bImg = bg2.createImageData(lw, lh), bd = bImg.data;
+    for (let y = 0; y < lh; y++) {
+      for (let x = 0; x < lw; x++) {
+        const i = y * lw + x;
+        if (!bankMask[i]) continue;
+        const p = i * 4;
+        const col = hash2(x, y) < 0.45 ? [58, 92, 48] : [76, 108, 56];
+        bd[p] = col[0]; bd[p + 1] = col[1]; bd[p + 2] = col[2]; bd[p + 3] = 255;
+      }
+    }
+    bg2.putImageData(bImg, 0, 0);
+    bgx.drawImage(bc, x0, y0);
+
+    // 4 quadros de animação em pixel art para a água
+    const frames = [];
+    for (let f = 0; f < 4; f++) {
+      const [fc, fg] = makeCanvas(lw, lh);
+      const img = fg.createImageData(lw, lh), d = img.data;
+      const phase = f * 3;
+      for (let y = 0; y < lh; y++) {
+        for (let x = 0; x < lw; x++) {
+          const i = y * lw + x;
+          if (!mask[i]) continue;
+          const ed = dist[i];
+          const wx = x0 + x, wy = y0 + y;
+          let col;
+          if (ed <= 1) col = ((wx + wy + f) % 5 === 0) ? cFoam : cEdge;
+          else if (ed <= 5) col = (bayer(wx, wy) < 0.35) ? cEdge : cShallow;
+          else if (ed <= 13) col = (bayer(wx, wy) < 0.4) ? cShallow : cMid;
+          else if (ed <= 19) col = (bayer(wx, wy) < 0.45) ? cMid : cDeep;
+          else col = (hash2(wx >> 2, wy >> 2) < 0.22) ? cDark : cDeep;
+
+          // Cristas de onda horizontais animadas (2-4px de largura)
+          if (ed > 4 && (wy % 9) === ((Math.floor(wx / 18) * 3 + f * 2) % 9)) {
+            const seg = (wx + phase + (wy * 5)) % 23;
+            if (seg < 4) col = ed > 12 ? cHl : cFoam;
+          }
+          // Brilhos solares pontuais
+          if (ed > 9 && ((wx * 13 + wy * 7) % 197 === 0)) {
+            if (((wx + wy + f) & 3) === 0) col = cSpark;
+          }
+          const p = i * 4;
+          d[p] = col[0]; d[p + 1] = col[1]; d[p + 2] = col[2]; d[p + 3] = 255;
+        }
+      }
+      fg.putImageData(img, 0, 0);
+      frames.push(fc);
+    }
+
+    // Colisão sólida em faixas horizontais (acompanha fielmente a margem curva)
+    const pierY0 = def.pierRow ? def.pierRow - 7 : -999;
+    const pierY1 = def.pierRow ? def.pierRow + 7 : -999;
+    for (let wy = y0; wy < y1; wy += 8) {
+      let inRun = false, rx0 = 0;
+      for (let wx = x0; wx <= x1; wx += 4) {
+        let solid = wx < x1 && (def.inside(wx, wy + 2, -2) || def.inside(wx, wy + 6, -2));
+        // Permite caminhar sobre o píer de madeira na margem oeste do lago grande
+        if (def.pierRow && wy + 4 >= pierY0 && wy + 4 <= pierY1 && wx >= 1516 && wx <= 1564) solid = false;
+        if (solid && !inRun) { inRun = true; rx0 = wx; }
+        else if (!solid && inRun) {
+          inRun = false;
+          if (wx - rx0 >= 4) addSolid(rx0, wy, wx - rx0, 8, 'lago');
+        }
+      }
+    }
+    LAKES.push({ def, x: x0, y: y0, w: lw, h: lh, frames });
+  }
+
+  // Guarda-corpo invisível nas laterais e ponta do píer para não cair na água
+  addSolid(1518, 731, 48, 3, 'pier');
+  addSolid(1518, 750, 48, 3, 'pier');
+  addSolid(1564, 731, 4, 22, 'pier');
+
+  // Píer de madeira na margem oeste do Lago Principal
+  const [pc, pg] = makeCanvas(54, 24);
+  rect(pg, 2, 18, 4, 5, '#3b2616'); rect(pg, 22, 18, 4, 5, '#3b2616'); rect(pg, 44, 18, 4, 5, '#3b2616');
+  rect(pg, 0, 4, 50, 15, '#7c502b');
+  for (let x = 1; x < 49; x += 4) {
+    rect(pg, x, 5, 3, 13, (x % 8 === 1) ? '#9c6839' : '#8d5b31');
+    rect(pg, x, 6, 1, 1, '#4a2f1a'); rect(pg, x, 16, 1, 1, '#4a2f1a');
+  }
+  rect(pg, 0, 3, 50, 2, '#5c3a1e'); rect(pg, 0, 18, 50, 2, '#4a2e17');
+  DECOR.push({ c: pc, x: 1516, y: 730 });
+
+  // Aerador / balsa flutuante visível na foto aérea do Lago Principal
+  const [ac, ag] = makeCanvas(34, 16);
+  rect(ag, 2, 6, 30, 7, '#334155'); rect(ag, 3, 4, 28, 6, '#64748b');
+  for (let kx = 5; kx < 28; kx += 8) { rect(ag, kx, 2, 5, 5, '#94a3b8'); rect(ag, kx + 1, 3, 3, 2, '#cbd5e1'); }
+  rect(ag, 1, 12, 32, 2, '#b9e3c2');
+  DECOR.push({ c: ac, x: 1868, y: 882 });
+
+  // Vitórias-régias e pedras aquáticas
+  const R = mulberry32(707);
+  for (let i = 0; i < 28; i++) {
+    const ang = R() * Math.PI * 2;
+    const rad = polarR(LAKE_DEFS[0].keys, ang) - 10 - R() * 22;
+    const lx = Math.round(LAKE_DEFS[0].cx + Math.cos(ang) * rad);
+    const ly = Math.round(LAKE_DEFS[0].cy + Math.sin(ang) * rad);
+    if (Math.abs(ly - 742) < 18 && lx < 1580) continue;
+    const [lc, lg] = makeCanvas(9, 7);
+    ellipseFill(lg, 4, 3, 3, 2, '#3d8b48');
+    rect(lg, 4, 3, 3, 1, '#26573f');
+    if (R() < 0.35) rect(lg, 3, 2, 2, 2, '#f9a8d4');
+    DECOR.push({ c: lc, x: lx, y: ly });
+  }
+  const [rk, rg] = makeCanvas(14, 10);
+  ellipseFill(rg, 7, 6, 6, 3, '#575e66'); ellipseFill(rg, 6, 5, 4, 2, '#868f98'); rect(rg, 4, 4, 3, 1, '#b0b8c0');
+  for (const [rx, ry] of [[1542, 690], [1565, 820], [1985, 720], [1960, 940], [2050, 345]]) DECOR.push({ c: rk, x: rx, y: ry });
+}
+
+/* =========================================================================
+   7. TERRENO BASE: GRAMA, BARRANCOS, CALÇADAS, RUAS, ESTACIONAMENTOS E SC-135
+   ========================================================================= */
+function drawCurbBox(g, x, y, w, h, fillPat, curbLight, curbDark) {
+  rect(g, x - 2, y - 2, w + 4, h + 4, curbDark || '#7d8288');
+  rect(g, x - 1, y - 1, w + 2, h + 2, curbLight || '#d5d9dd');
+  rect(g, x, y, w, h, fillPat);
+}
+function drawCrosswalk(g, x, y, w, h, horizontalStripes) {
+  g.fillStyle = '#e6eaee';
+  if (horizontalStripes) {
+    for (let sy = y + 2; sy < y + h - 2; sy += 6) g.fillRect(x, sy, w, 3);
+  } else {
+    for (let sx = x + 2; sx < x + w - 2; sx += 6) g.fillRect(sx, y, 3, h);
+  }
+}
+
+function drawTerrain() {
+  // 1) Gramado base em todo o mundo
+  rect(bgx, 0, 0, W, H, PAT.grass);
+
+  // Variações suaves de gramado (manchas orgânicas claras/escuras e canteiros)
+  const R = mulberry32(2026);
+  for (let i = 0; i < 160; i++) {
+    const gx = Math.floor(R() * W), gy = Math.floor(260 + R() * 1160);
+    ellipseFill(bgx, gx, gy, 18 + Math.floor(R() * 34), 10 + Math.floor(R() * 18),
+      R() < 0.5 ? 'rgba(124,189,78,0.16)' : 'rgba(42,92,34,0.14)');
+  }
+
+  // 2) Solo escuro sob a Floresta Norte e Sudeste + barranco avermelhado ao norte
+  for (let x = 0; x < W; x += 2) {
+    const fn = Math.round(forestNorthBottom(x));
+    bgx.fillStyle = PAT.forestFloor;
+    bgx.fillRect(x, 0, 2, fn + 4);
+    if (x >= 290 && x <= 1710) {
+      bgx.fillStyle = PAT.dirt;
+      bgx.fillRect(x, fn + 2, 2, Math.max(0, 332 - fn));
+      rect(bgx, x, fn + 2, 2, 2, '#6d4728');
+    }
+    const fse = forestSETop(x);
+    if (fse < H) {
+      const fseB = Math.round(forestSEBottom(x));
+      if (fseB > fse) {
+        bgx.fillStyle = PAT.forestFloor;
+        bgx.fillRect(x, Math.round(fse), 2, fseB - Math.round(fse));
+      }
+    }
+  }
+
+  // 3) Estrada de terra lateral oeste + pátio de brita do Barracão e canteiros das Estufas
+  for (const dr of DIRT_ROADS) {
+    strokePolyline(bgx, dr.pts, dr.w + 4, '#7a5232');
+    strokePolyline(bgx, dr.pts, dr.w, PAT.dirt);
+  }
+  // Caminho até o barracão inclinado
+  strokePolyline(bgx, [[320, 680], [210, 690], [130, 745]], 34, PAT.gravel);
+  ellipseFill(bgx, 165, 700, 125, 65, PAT.gravel);
+
+  // Canteiros agrícolas ao lado das estufas
+  drawCurbBox(bgx, 352, 462, 184, 42, PAT.soil, '#8c6b4f', '#523a26');
+  for (let ry = 468; ry < 500; ry += 7) {
+    rect(bgx, 358, ry, 172, 3, '#3c2718');
+    for (let rx = 362; rx < 526; rx += 6) {
+      rect(bgx, rx, ry - 1, 3, 3, '#3b873e');
+      rect(bgx, rx + 1, ry - 2, 1, 1, '#7ad168');
+    }
+  }
+
+  // 4) Pátios pavimentados, calçadas e passarelas
+  for (const r of PAVED) drawCurbBox(bgx, r[0], r[1], r[2], r[3], PAT.concrete);
+  // Pátio extra entre Refeitório e Ginásio (visível na foto aérea)
+  drawCurbBox(bgx, 1985, 448, 126, 108, PAT.concrete);
+  strokePolyline(bgx, [[1955, 430], [2020, 468]], 26, PAT.concrete);
+  // Pátio do Ginásio
+  drawCurbBox(bgx, GYM_PLAZA[0], GYM_PLAZA[1], GYM_PLAZA[2], GYM_PLAZA[3], PAT.pavers);
+  // Caminho diagonal na grama em frente ao Prédio Principal (fiel à foto!)
+  strokePolyline(bgx, [[505, 858], [585, 965], [648, 1025]], 22, '#9fa4aa');
+  strokePolyline(bgx, [[505, 858], [585, 965], [648, 1025]], 18, PAT.concrete);
+  // Gramado em volta do Auditório + passarela até a porta
+  drawCurbBox(bgx, AUDI_LAWN[0], AUDI_LAWN[1], AUDI_LAWN[2], AUDI_LAWN[3], PAT.grass, '#d2d6da', '#8e9399');
+  rect(bgx, 846, 536, 28, 28, PAT.concrete);
+  // Canteiros verdes no pátio acadêmico e em frente ao Administrativo
+  drawCurbBox(bgx, 795, 608, 118, 44, PAT.grass, '#d2d6da', '#8e9399');
+  drawCurbBox(bgx, 1126, 610, 136, 48, PAT.grass, '#d2d6da', '#8e9399');
+  drawCurbBox(bgx, 966, 964, 112, 24, PAT.grass, '#d2d6da', '#8e9399');
+  drawCurbBox(bgx, 1122, 964, 118, 24, PAT.grass, '#d2d6da', '#8e9399');
+
+  // 5) Quadras de Areia (ao lado do Ginásio + quadra menor perto do lago)
+  for (const sc of [SAND_COURT, [1806, 488, 96, 44]]) {
+    drawCurbBox(bgx, sc[0], sc[1], sc[2], sc[3], PAT.sand, '#c9ab72', '#8c7040');
+    // Linhas da quadra e rede de vôlei
+    rect(bgx, sc[0] + 6, sc[1] + 6, sc[2] - 12, 1, '#f8fafc');
+    rect(bgx, sc[0] + 6, sc[1] + sc[3] - 7, sc[2] - 12, 1, '#f8fafc');
+    rect(bgx, sc[0] + 6, sc[1] + 6, 1, sc[3] - 12, '#f8fafc');
+    rect(bgx, sc[0] + sc[2] - 7, sc[1] + 6, 1, sc[3] - 12, '#f8fafc');
+    const mx = sc[0] + (sc[2] >> 1);
+    for (let ny = sc[1] + 4; ny < sc[1] + sc[3] - 4; ny += 2) rect(bgx, mx, ny, 2, 1, '#e2e8f0');
+    rect(bgx, mx - 1, sc[1] + 2, 3, 3, '#475569');
+    rect(bgx, mx - 1, sc[1] + sc[3] - 5, 3, 3, '#475569');
+  }
+
+  // 6) Estacionamento Principal + Anexo Oeste (motos/bikes) + Estacionamento Leste
+  drawCurbBox(bgx, 500, 1128, 145, 222, PAT.pavers, '#cfd3d7', '#7f848a');
+  drawCurbBox(bgx, PARK_MAIN[0], PARK_MAIN[1], PARK_MAIN[2], PARK_MAIN[3], PAT.asphalt, '#d5d9dd', '#7c8187');
+  drawCurbBox(bgx, PARK_EAST[0], PARK_EAST[1], PARK_EAST[2], PARK_EAST[3], PAT.asphalt, '#d5d9dd', '#7c8187');
+
+  // Ilhas arborizadas no centro do Estacionamento Principal (visíveis na foto)
+  drawCurbBox(bgx, 790, 1154, 175, 26, PAT.grass, '#d5d9dd', '#7c8187');
+  drawCurbBox(bgx, 1005, 1154, 175, 26, PAT.grass, '#d5d9dd', '#7c8187');
+
+  // Demarcação das vagas de estacionamento (faixas brancas em pixel art)
+  bgx.fillStyle = '#d8dde3';
+  // Fileira superior (junto ao Bloco Administrativo)
+  for (let vx = 720; vx <= 1220; vx += 24) bgx.fillRect(vx, 1004, 2, 32);
+  // Fileiras centrais (acima e abaixo das ilhas verdes)
+  for (const ix of [[794, 962], [1010, 1178]]) {
+    for (let vx = ix[0]; vx <= ix[1]; vx += 24) {
+      bgx.fillRect(vx, 1118, 2, 32);
+      bgx.fillRect(vx, 1184, 2, 32);
+    }
+  }
+  // Fileira sul (junto ao muro/cerca da rodovia)
+  for (let vx = 720; vx <= 1220; vx += 24) bgx.fillRect(vx, 1312, 2, 34);
+  // Vagas oeste (perto do abrigo azul)
+  for (let vy = 1140; vy <= 1310; vy += 22) bgx.fillRect(506, vy, 30, 2);
+  // Vagas leste ao longo da avenida
+  for (let vy = 824; vy <= 1124; vy += 24) bgx.fillRect(1408, vy, 32, 2);
+
+  // 7) Ruas Internas Asfaltadas (com meio-fio duplo e conexões limpas)
+  for (const rd of ROADS) {
+    strokePolyline(bgx, rd.pts, rd.w + 6, '#7a7f85');
+    strokePolyline(bgx, rd.pts, rd.w + 2, '#d6dade');
+  }
+  for (const rd of ROADS) strokePolyline(bgx, rd.pts, rd.w, PAT.asphalt);
+  // Acessos do estacionamento para a avenida principal
+  rect(bgx, 1286, 1020, 30, 56, PAT.asphalt);
+  rect(bgx, 1286, 1265, 30, 62, PAT.asphalt);
+  rect(bgx, 1386, 820, 24, 325, PAT.asphalt);
+
+  // Canteiro central arborizado da Avenida Interna + ilha da Guarita
+  drawCurbBox(bgx, 1345, 430, 10, 575, PAT.grass, '#d8dce0', '#777c82');
+  drawCurbBox(bgx, 1345, 1085, 10, 170, PAT.grass, '#d8dce0', '#777c82');
+  drawCurbBox(bgx, 1337, 1344, 26, 48, PAT.concrete, '#e2e6ea', '#777c82');
+
+  // Faixas tracejadas nas ruas internas
+  dashPolyline(bgx, [[320, 355], [1685, 355]], '#cbd5e1', 10, 10, 2, [[1310, 330, 80, 55]]);
+  dashPolyline(bgx, [[1690, 355], [2040, 690], [2040, 765]], '#cbd5e1', 10, 10, 2);
+
+  // Faixas de pedestres pelo campus
+  drawCrosswalk(bgx, 1312, 398, 31, 14, false);
+  drawCrosswalk(bgx, 1357, 398, 31, 14, false);
+  drawCrosswalk(bgx, 1312, 875, 31, 14, false);
+  drawCrosswalk(bgx, 1357, 875, 31, 14, false);
+  drawCrosswalk(bgx, 1312, 1330, 24, 12, false);
+  drawCrosswalk(bgx, 1364, 1330, 24, 12, false);
+  drawCrosswalk(bgx, 1290, 332, 14, 46, true);
+
+  // 8) Trevo de Acesso + Rodovia SC-135 (diagonal no extremo sul)
+  // Funil asfaltado entre a Guarita e a SC-135
+  for (let y = 1380; y <= 1490; y++) {
+    const t = clamp((y - 1380) / 95, 0, 1);
+    const flare = t * t * 115;
+    const lx = Math.round(1310 - flare), rx = Math.round(1390 + flare * 1.15);
+    rect(bgx, lx - 3, y, rx - lx + 6, 1, '#d6dade');
+    rect(bgx, lx, y, rx - lx, 1, PAT.asphalt);
+  }
+  // Ilha triangular gramada no trevo (onde ficam o totem IFC e os mastros, igual à foto!)
+  for (let y = 1396; y <= 1468; y++) {
+    const t = (y - 1396) / 72;
+    const xL = Math.round(1366 - t * 28), xR = Math.round(1378 + t * 56);
+    rect(bgx, xL - 2, y, xR - xL + 4, 1, '#e2e8f0');
+    if (y > 1400 && y < 1464) rect(bgx, xL, y, xR - xL, 1, PAT.grass);
+  }
+  // Zebrado branco nas bordas do trevo (igual à foto aérea!)
+  for (let k = 0; k < 10; k++) {
+    rect(bgx, 1255 + k * 8, 1455 + Math.round(k * 1.2), 4, 14, '#f1f5f9');
+    rect(bgx, 1350 + k * 10, 1466 + Math.round(k * 0.7), 5, 13, '#f1f5f9');
+  }
+
+  // Rodovia SC-135 de Oeste a Leste
+  for (let x = 0; x < W; x += 2) {
+    const rt = Math.round(roadTop(x));
+    // Acostamento de terra/brita + linha branca de bordo
+    rect(bgx, x, rt - 10, 2, ROAD_W + 22, PAT.dirt);
+    rect(bgx, x, rt - 3, 2, ROAD_W + 6, '#686c73');
+    rect(bgx, x, rt, 2, ROAD_W, PAT.asphalt);
+    if (x < 1210 || x > 1510) rect(bgx, x, rt + 3, 2, 2, '#e2e8f0');
+    rect(bgx, x, rt + ROAD_W - 5, 2, 2, '#e2e8f0');
+    // Faixa amarela dupla / tracejada central
+    const cy = rt + (ROAD_W >> 1);
+    rect(bgx, x, cy - 2, 2, 1, '#eab308');
+    if (((x >> 4) & 1) === 0) rect(bgx, x, cy + 1, 2, 2, '#facc15');
+    // Terra avermelhada ao sul da rodovia
+    if (rt + ROAD_W + 12 < H) rect(bgx, x, rt + ROAD_W + 12, 2, H - (rt + ROAD_W + 12), PAT.dirt);
+  }
+  // Pintura "SC-135" e "PARE" no asfalto
+  drawPixelText(bgx, 'SC-135', 380, Math.round(roadTop(380)) + 16, '#cbd5e1', 2);
+  drawPixelText(bgx, 'SC-135', 1880, Math.round(roadTop(1880)) + 50, '#cbd5e1', 2);
+  drawPixelText(bgx, 'PARE', 1316, 1392, '#f8fafc', 1);
+
+  // Muro/gradil institucional ao sul do estacionamento (com abertura no pórtico)
+  for (let x = 498; x <= 1304; x += 2) {
+    const fy = Math.min(1366, Math.round(roadTop(x)) - 16);
+    rect(bgx, x, fy, 2, 4, '#d1d5db');
+    rect(bgx, x, fy - 4, 2, 4, '#0f8a57');
+    if (x % 18 === 0) rect(bgx, x, fy - 7, 3, 11, '#f1f5f9');
+  }
+}
+
+/* =========================================================================
+   8. CONSTRUÇÃO DOS PRÉDIOS E ESTRUTURAS EM PIXEL ART 3/4
+   ========================================================================= */
+// Desenha prédio no mundo + sombra projetada + faixa superior para oclusão 3/4 + hitboxes AABB
+function placeStructure(canvas, bx, baseBottomY, solidRects, roofLift, tag) {
+  const drawY = baseBottomY - canvas.height;
+  // Sombra projetada a sudeste
+  const sh = silhouette(canvas);
+  bgx.save();
+  bgx.globalAlpha = 0.24;
+  bgx.drawImage(sh, bx + 7, drawY + 6);
+  bgx.restore();
+  // Corpo completo no cenário base (permite caminhar na frente de portas e em pátios internos sem glitch)
+  bgx.drawImage(canvas, bx, drawY);
+
+  // Faixas superiores de telhado em SPRITES para cobrir os pés do jogador quando ele passa por trás do prédio
+  for (const r of solidRects) {
+    addSolid(r[0], r[1], r[2], r[3], tag);
+    const capTop = Math.max(drawY, r[1] - roofLift);
+    const capH = (r[1] + 5) - capTop;
+    if (capH > 0) {
+      const sx = r[0] - bx, sy = capTop - drawY;
+      const cw = Math.min(r[2], canvas.width - sx);
+      if (sx >= 0 && sy >= 0 && cw > 0) {
+        const [cap, cg] = makeCanvas(cw, capH);
+        cg.drawImage(canvas, sx, sy, cw, capH, 0, 0, cw, capH);
+        SPRITES.push({ c: cap, x: r[0], y: capTop, sortY: r[1] + 6 });
+      }
+    }
+  }
+}
+
+function buildStructures() {
+  // -----------------------------------------------------------------------
+  // 1) GUARITA / PÓRTICO DE ENTRADA (Sul - Centro)
+  // -----------------------------------------------------------------------
+  const booth = renderBuilding({
+    w: 22, h: 40, wallH: 14,
+    shape: (x, y) => x >= 0 && x < 22 && y >= 0 && y < 26,
+    roof: flatRoof(C('#cfd6dc'), C('#9aa4ae'), C('#eef2f5'), C('#b4bec6')),
+    wall: makeWall({
+      trimH: 3,
+      windows: { offset: 3, period: 8, width: 6, rows: [[5, 10]] },
+      doors: [{ x: 8, w: 6, h: 9 }]
+    }),
+    decorate: (g) => { acUnit(g, 7, 6); }
+  });
+  placeStructure(booth, 1339, 1380, LOCATIONS[0].rects, 12, 'guarita');
+
+  // Pilares laterais + Cobertura arqueada verde-azulada característica sobre as pistas (OVERLAYS)
+  const pillar = makePillar();
+  SPRITES.push({ c: pillar, x: 1303, y: 1348, sortY: 1378 });
+  SPRITES.push({ c: pillar, x: 1389, y: 1348, sortY: 1378 });
+  addSolid(1304, 1370, 6, 7, 'portico');
+  addSolid(1390, 1370, 6, 7, 'portico');
+
+  // Cancelas abertas/semi-abertas com passagem ampla para o estudante
+  rect(bgx, 1334, 1368, 5, 4, '#dc2626'); rect(bgx, 1326, 1369, 8, 2, '#f8fafc');
+  rect(bgx, 1361, 1368, 5, 4, '#dc2626'); rect(bgx, 1366, 1369, 8, 2, '#f8fafc');
+
+  const canopy = makeCanopy(98, 32);
+  bgx.save(); bgx.globalAlpha = 0.22; bgx.drawImage(silhouette(canopy), 1307, 1346); bgx.restore();
+  OVERLAYS.push({ c: canopy, x: 1301, y: 1334 });
+
+  // Totem Institucional IFC + Mastros de Bandeiras na ilha de entrada
+  const totem = makeTotem();
+  SPRITES.push({ c: totem, x: 1384, y: 1396, sortY: 1437 });
+  addSolid(1386, 1430, 26, 7, 'totem');
+
+  const flags = [['#16a34a', '#facc15'], ['#dc2626', '#ffffff'], ['#10b981', '#ffffff']];
+  flags.forEach(( cols, idx ) => {
+    const [fc, fg] = makeCanvas(16, 36);
+    rect(fg, 2, 2, 2, 33, '#cfd6dc'); rect(fg, 3, 2, 1, 33, '#8c96a0');
+    rect(fg, 4, 3, 10, 7, cols[0]); rect(fg, 6, 5, 5, 3, cols[1]);
+    addOuterOutline(fg, 16, 36, [20, 24, 30]);
+    const fx = 1368 + idx * 14, fy = 1412 + idx * 12;
+    SPRITES.push({ c: fc, x: fx, y: fy, sortY: fy + 35 });
+  });
+
+  // -----------------------------------------------------------------------
+  // 2) ABRIGO COBERTO AZUL DE MOTOS/BICICLETAS + CABINE ANEXA (Estacionamento Oeste)
+  // -----------------------------------------------------------------------
+  const [motoC, motoG] = makeCanvas(30, 174);
+  for (let y = 0; y < 164; y++) {
+    for (let x = 0; x < 30; x++) {
+      const rib = (y % 5 === 0) ? 0.84 : 1;
+      const arch = 0.86 + 0.22 * Math.sin((x / 29) * Math.PI);
+      const col = shade(C('#1496c4'), rib * arch);
+      rect(motoG, x, y, 1, 1, rgbStr(col));
+    }
+  }
+  rect(motoG, 0, 164, 30, 8, '#0c5c7a');
+  // Motos/bicicletas sob a cobertura na borda frontal
+  for (let mx = 4; mx < 26; mx += 6) {
+    rect(motoG, mx, 166, 3, 5, '#1e293b');
+    rect(motoG, mx + 1, 165, 2, 2, mx % 12 === 4 ? '#ef4444' : '#e2e8f0');
+  }
+  addOuterOutline(motoG, 30, 174, [14, 36, 48]);
+  placeStructure(motoC, 644, 1334, [[644, 1168, 30, 166]], 8, 'abrigo-motos');
+
+  // Pequeno depósito verde-escuro ao lado do abrigo azul (visível na foto aérea)
+  const shedSmall = renderBuilding({
+    w: 24, h: 52, wallH: 10,
+    shape: (x, y) => x >= 0 && x < 24 && y >= 0 && y < 42,
+    roof: flatRoof(C('#4b5d52'), C('#36453c'), C('#6c8274'), C('#586c60')),
+    wall: makeWall({ base: C('#cbd5cf'), trimH: 2 })
+  });
+  placeStructure(shedSmall, 684, 1262, [[684, 1218, 24, 44]], 8, 'apoio');
+
+  // -----------------------------------------------------------------------
+  // 3) BLOCO ADMINISTRATIVO (Centro-Sul, acima do estacionamento)
+  // -----------------------------------------------------------------------
+  const admin = renderBuilding({
+    w: 280, h: 110, wallH: 20, wallMode: 'toBase',
+    shape: (x, y) => {
+      if (x < 225) return y >= 6 && y < 90;
+      // Ala direita levemente curva voltada à avenida (fiel à foto)
+      const t = (x - 225) / 55;
+      const top = Math.round(6 - t * 6);
+      const bot = Math.round(90 - t * t * 14);
+      return y >= top && y < bot;
+    },
+    roof: (x, y, ed) => {
+      const base = C('#dfe5ea');
+      if (ed <= 1) return C('#f8fafc');
+      if (ed === 2) return C('#b8c2cc');
+      if (Math.abs(y - 46) <= 1 && x < 230) return C('#ffffff');
+      if (x % 14 === 0) return shade(base, 0.91);
+      return y < 46 ? shade(base, 1.03) : shade(base, 0.95);
+    },
+    wall: makeWall({
+      trimH: 4, stripe: 15,
+      windows: { offset: 8, period: 16, width: 9, rows: [[6, 12]] },
+      skip: [[126, 154]],
+      doors: [{ x: 132, w: 16, h: 13 }]
+    }),
+    decorate: (g) => {
+      drawIfcLogo(g, 118, 93, 2);
+      acUnit(g, 40, 20); acUnit(g, 190, 20);
+    }
+  });
+  placeStructure(admin, 960, 952, LOCATIONS[1].rects, 16, 'admin');
+
+  // -----------------------------------------------------------------------
+  // 4) PRÉDIO PRINCIPAL / SALAS DE AULA (Centro-Oeste, grande bloco em L com base curva verde)
+  // -----------------------------------------------------------------------
+  // Parte A: Corpo principal em "L" (ala norte-leste [960..1100, 420..700] + ala longa [440..1060, 690..810])
+  const mainW = 660, mainH = 414; // cobre x: 440..1100, y: 396..810
+  const mainBldg = renderBuilding({
+    w: mainW, h: mainH, wallH: 28,
+    shape: (x, y) => {
+      // Ala vertical direita: x in [520..660] -> mundo 960..1100, telhado y in [0..256] -> mundo 396..652 (com canto sudeste curvo!)
+      const inVert = x >= 520 && x < 660 && y >= 0 && y < 276 &&
+        !(x > 622 && y > 238 && Math.hypot(x - 622, y - 238) > 38);
+      // Ala horizontal longa: x in [0..624] -> mundo 440..1064, telhado y in [268..386] -> mundo 664..782
+      const inHoriz = x >= 0 && x < 624 && y >= 268 && y < 386;
+      return inVert || inHoriz;
+    },
+    roof: (x, y, ed) => {
+      // Na foto: metade oeste tem telhado cinza-claro metálico; metade central/leste tem telhado cinza-ardósia escuro
+      const westWing = x < 270 && y >= 268;
+      const base = westWing ? C('#bfc6ce') : C('#757c86');
+      if (ed <= 1) return westWing ? C('#eef2f6') : C('#b5bcc6');
+      if (ed === 2) return westWing ? C('#9aa3ad') : C('#585e67');
+      if (ed === 3) return shade(base, 0.82);
+      // Cumeeiras dos telhados
+      if (y >= 268 && Math.abs(y - 327) <= 1 && x < 610) return shade(base, 1.16);
+      if (x >= 520 && y < 268 && Math.abs(x - 590) <= 1) return shade(base, 1.15);
+      if ((westWing ? (x % 10 === 0) : (x % 16 === 0))) return shade(base, 0.92);
+      return hash2(x, y) < 0.08 ? shade(base, 0.95) : base;
+    },
+    wall: (x, k, len, info) => {
+      const kb = len - 1 - k;
+      // Fachada curva verde-escura icônica na junção leste (mundo x ~ 1040..1100)
+      if (x >= 600) {
+        if (kb < 3) return P.greenD;
+        if (k === 0) return P.eave;
+        if (x >= 632 && x < 648 && kb < 13) return ((x + kb) % 5 === 0) ? P.glassL : P.glassD;
+        if (kb >= 6 && kb <= 20 && (x % 6 < 4)) return ((x + kb) % 7 === 0) ? C('#5ec299') : C('#0e6f47');
+        return P.green;
+      }
+      return makeWall({
+        trimH: 4, stripe: 22,
+        windows: { offset: 6, period: 14, width: 9, rows: [[6, 11], [15, 20]] },
+        skip: [[112, 130], [536, 556]],
+        doors: [{ x: 114, w: 14, h: 12 }, { x: 538, w: 14, h: 12 }]
+      })(x, k, len, info);
+    },
+    decorate: (g) => {
+      skylight(g, 60, 316, 42, 10); skylight(g, 165, 316, 42, 10);
+      acUnit(g, 555, 60); acUnit(g, 575, 140); acUnit(g, 380, 300); acUnit(g, 460, 300);
+      drawIfcLogo(g, 266, 392, 2);
+    }
+  });
+  placeStructure(mainBldg, 440, 810, [LOCATIONS[2].rects[0], LOCATIONS[2].rects[1]], 20, 'principal');
+
+  // Parte B: Terraço frontal curvo com parede verde institucional ([700, 810, 200, 40])
+  const terrace = renderBuilding({
+    w: 200, h: 46, wallH: 14,
+    shape: (x, y) => {
+      if (y < 0 || y >= 32) return false;
+      // Borda sul suavemente curva como na foto aérea
+      const curve = Math.round(32 - Math.pow((x - 95) / 105, 2) * 10);
+      return y < curve;
+    },
+    roof: flatRoof(C('#c9d0d6'), C('#9ba3ab'), C('#e7ecf0'), C('#b1bac2')),
+    wall: makeWall({ base: P.green, trim: P.greenD, trimD: C('#064e32'), trimH: 3, doors: [{ x: 92, w: 16, h: 10 }] })
+  });
+  placeStructure(terrace, 700, 850, [LOCATIONS[2].rects[2]], 4, 'principal-base');
+
+  // -----------------------------------------------------------------------
+  // 5) LABORATÓRIOS (Noroeste, blocos brancos em "U" formando pátio interno)
+  // -----------------------------------------------------------------------
+  // Coordenadas globais: x in [560..760], y in [430..640] => w=200, h=228
+  const labs = renderBuilding({
+    w: 200, h: 228, wallH: 18,
+    shape: (x, y) => {
+      const topWing = x >= 40 && x < 200 && y >= 0 && y < 60;
+      const leftWing = x >= 0 && x < 60 && y >= 0 && y < 210;
+      // Ala sul com extremidade direita arredondada (fiel à foto!)
+      const inBotRect = x >= 60 && x < 162 && y >= 160 && y < 210;
+      const inBotCap = x >= 162 && x < 182 && y >= 160 && y < 210 && Math.hypot(x - 162, y - 185) <= 24;
+      return topWing || leftWing || inBotRect || inBotCap;
+    },
+    roof: (x, y, ed) => {
+      // Ala norte tem telhado azul-acinzentado; demais alas branco/cinza claro
+      const north = y < 60 && x >= 60;
+      const base = north ? C('#8da4b8') : C('#dfe4e8');
+      if (ed <= 1) return C('#f8fafc');
+      if (ed === 2) return shade(base, 0.82);
+      if (x % 12 === 0 || y % 16 === 0) return shade(base, 0.93);
+      return base;
+    },
+    wall: makeWall({
+      trimH: 3,
+      windows: { offset: 5, period: 12, width: 7, rows: [[6, 12]] },
+      doors: [{ x: 134, w: 12, h: 11 }, { x: 114, w: 12, h: 11 }]
+    }),
+    decorate: (g) => { vent(g, 80, 20); vent(g, 130, 20); acUnit(g, 22, 95); acUnit(g, 100, 175); }
+  });
+  placeStructure(labs, 560, 640, LOCATIONS[3].rects, 16, 'labs');
+
+  // -----------------------------------------------------------------------
+  // 6) DUAS ESTUFAS AGRÍCOLAS PARALELAS (aspecto translúcido esverdeado)
+  // -----------------------------------------------------------------------
+  function makeGreenhouse() {
+    const w = 170, h = 54, [c, g] = makeCanvas(w, h);
+    // Abóbada translúcida esverdeada mostrando fileiras de plantas no interior
+    for (let y = 0; y < 42; y++) {
+      const v = (y - 21) / 21;
+      const arch = Math.sqrt(Math.max(0, 1 - v * v));
+      for (let x = 0; x < w; x++) {
+        let base = mix(C('#6ea894'), C('#b8e4d0'), arch * 0.75);
+        // Sombra das bancadas verdes internas vistas através do policarbonato
+        if (y > 6 && y < 36 && (y % 7 < 4) && x > 6 && x < w - 6) base = mix(base, C('#2e7d47'), 0.32);
+        // Arcos metálicos a cada 14px
+        if (x % 14 === 0 || x === w - 1) base = C('#dce7eb');
+        // Brilho especular no topo da estufa
+        if (y >= 11 && y <= 15 && (x % 14 !== 0)) base = mix(base, C('#f0fdf9'), 0.55);
+        rect(g, x, y, 1, 1, rgbStr(base));
+      }
+    }
+    // Parede frontal translúcida + base de alvenaria
+    for (let y = 42; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        let col = y >= h - 3 ? '#64748b' : (x % 14 === 0 ? '#cbd5e1' : ((x + y) % 5 === 0 ? '#99d5c4' : '#5f9688'));
+        if (x >= 79 && x < 91 && y >= 43) col = (x === 79 || x === 90 || y === 43) ? '#e2e8f0' : '#334e48';
+        rect(g, x, y, 1, 1, col);
+      }
+    }
+    addOuterOutline(g, w, h, [26, 48, 44]);
+    return c;
+  }
+  const gh = makeGreenhouse();
+  placeStructure(gh, 360, 562, [LOCATIONS[4].rects[0]], 8, 'estufa');
+  placeStructure(gh, 360, 628, [LOCATIONS[4].rects[1]], 8, 'estufa');
+
+  // -----------------------------------------------------------------------
+  // 7) BARRACÃO / GARAGEM INCLINADO (Extremo Oeste perto da grama)
+  // -----------------------------------------------------------------------
+  const [barC, barG] = makeCanvas(236, 150, true);
+  // Desenha galpão inclinado (~26°) com telhado de zinco nervurado e baias de garagem
+  const ax = 200, ay = 16, bx2 = 18, by2 = 112; // eixo da cumeeira
+  const lenB = Math.hypot(bx2 - ax, by2 - ay);
+  const ux = (bx2 - ax) / lenB, uy = (by2 - ay) / lenB;
+  const nx = -uy, ny = ux; // normal
+  for (let y = 0; y < 134; y++) {
+    for (let x = 0; x < 236; x++) {
+      const dx = x - ax, dy = y - ay;
+      const along = dx * ux + dy * uy;
+      const perp = dx * nx + dy * ny;
+      if (along >= 0 && along <= lenB && Math.abs(perp) <= 19) {
+        let col = perp < 0 ? C('#d6dde3') : C('#adb7c1');
+        if (Math.abs(perp) < 1.3) col = C('#f8fafc');
+        else if (Math.floor(along) % 7 === 0) col = shade(col, 0.88);
+        if (Math.abs(perp) > 17.5) col = C('#64707d');
+        rect(barG, x, y, 1, 1, rgbStr(col));
+      }
+    }
+  }
+  // Parede frontal escura sob a borda sul do telhado inclinado (baias de máquinas)
+  const barData = barG.getImageData(0, 0, 236, 134).data;
+  for (let x = 12; x < 224; x++) {
+    let yb = -1;
+    for (let y = 133; y >= 0; y--) {
+      if (barData[(y * 236 + x) * 4 + 3] > 0) { yb = y; break; }
+    }
+    if (yb > 0) {
+      for (let k = 1; k <= 13; k++) {
+        const wy = yb + k; if (wy >= 150) break;
+        const isBay = (x % 28 >= 6 && x % 28 <= 21) && k >= 3;
+        rect(barG, x, wy, 1, 1, k >= 12 ? '#0a6640' : (isBay ? '#1f2937' : '#dce2e6'));
+      }
+    }
+  }
+  addOuterOutline(barG, 236, 150, [24, 30, 36]);
+  placeStructure(barC, 48, 742, LOCATIONS[5].rects, 6, 'barracao');
+
+  // -----------------------------------------------------------------------
+  // 8) AUDITÓRIO (Centro-Norte, telhado icônico em leque / poligonal)
+  // -----------------------------------------------------------------------
+  const audi = renderBuilding({
+    w: 148, h: 142, wallH: 18, wallMode: 'toBase',
+    shape: (x, y) => {
+      // Polígono em leque (octogonal/trapezoidal aberto ao norte e afunilado ao sul)
+      const cx = 74;
+      const dx = Math.abs(x - cx);
+      if (y < 4 || y >= 122) return false;
+      if (y < 24) return dx <= 36 + (y - 4) * 1.7;        // chanfros superiores do leque
+      if (y < 76) return dx <= 70 - (y - 24) * 0.28;      // laterais largas
+      return dx <= 55 - (y - 76) * 0.62;                  // funil até o foyer frontal
+    },
+    roof: (x, y, ed) => {
+      if (ed <= 1) return C('#ffffff');
+      if (ed === 2) return C('#b8c1ca');
+      // Nervuras radiais do telhado em leque convergindo para (74, 118)
+      const ang = Math.atan2(118 - y, x - 74);
+      const deg = ang * 180 / Math.PI;
+      const sector = Math.round(deg / 18) * 18;
+      if (Math.abs(deg - sector) < 1.15) return C('#9aa4b0');
+      const shadeFactor = 0.94 + 0.09 * Math.cos((deg - 110) * Math.PI / 180);
+      return shade(C('#e9eef2'), shadeFactor);
+    },
+    wall: (x, k, len) => {
+      const kb = len - 1 - k;
+      const dx = Math.abs(x - 74);
+      // Fachada curva envidraçada verde-escura na entrada sul do auditório
+      if (dx <= 26) {
+        if (kb < 2) return P.greenD;
+        if (k === 0) return P.eave;
+        if (dx <= 8 && kb < 10) return ((x + kb) % 4 === 0) ? P.glassL : P.glassD;
+        return (x % 5 === 0) ? P.greenD : P.green;
+      }
+      return kb < 3 ? P.green : (k === 0 ? P.eave : P.wall);
+    },
+    decorate: (g) => { acUnit(g, 66, 92); }
+  });
+  placeStructure(audi, 786, 540, LOCATIONS[6].rects, 16, 'auditorio');
+
+  // -----------------------------------------------------------------------
+  // 9) BIBLIOTECA E BLOCO PEDAGÓGICO (Centro-Norte, fachada branca + curva verde)
+  // -----------------------------------------------------------------------
+  const biblio = renderBuilding({
+    w: 164, h: 190, wallH: 26, wallMode: 'toBase',
+    shape: (x, y) => {
+      const main = x >= 0 && x < 132 && y >= 0 && y < 156;
+      const east = x >= 132 && x < 160 && y >= 10 && y < 148;
+      // Rotunda curva frontal característica vista na foto aérea
+      const rotunda = y >= 148 && y < 164 && Math.hypot((x - 68) * 0.85, (y - 148) * 1.7) <= 34;
+      return main || east || rotunda;
+    },
+    roof: (x, y, ed) => {
+      const base = C('#e3e8ed');
+      if (ed <= 1) return C('#ffffff');
+      if (ed === 2) return C('#b4bec8');
+      if (Math.abs(x - 66) <= 1 && y < 150) return C('#ffffff');
+      if (y % 14 === 0) return shade(base, 0.92);
+      return x < 66 ? shade(base, 1.03) : shade(base, 0.96);
+    },
+    wall: (x, k, len, info) => {
+      const kb = len - 1 - k;
+      // Curva frontal em vidro verde institucional (marca registrada desse bloco na foto!)
+      if (x >= 32 && x <= 104) {
+        if (kb < 3) return P.greenD;
+        if (k === 0) return P.eave;
+        if (x >= 59 && x < 75 && kb < 12) return ((x + kb) % 5 === 0) ? P.glassL : P.glassD;
+        if (kb >= 5 && kb <= 21) {
+          if (x % 6 === 0) return C('#d1fae5');
+          return ((x + kb) % 7 === 0) ? C('#34d399') : C('#0b6b45');
+        }
+        return P.green;
+      }
+      return makeWall({
+        trimH: 4,
+        windows: { offset: 4, period: 12, width: 7, rows: [[6, 11], [15, 20]] }
+      })(x, k, len, info);
+    },
+    decorate: (g) => { skylight(g, 48, 45, 36, 12); skylight(g, 48, 92, 36, 12); }
+  });
+  placeStructure(biblio, 1120, 580, LOCATIONS[7].rects, 18, 'biblioteca');
+
+  // -----------------------------------------------------------------------
+  // 10) COPA / CANTINA (Centro, telhado colonial cor de telha entre a avenida e o lago)
+  // -----------------------------------------------------------------------
+  const copa = renderBuilding({
+    w: 94, h: 106, wallH: 15,
+    shape: (x, y) => x >= 0 && x < 94 && y >= 0 && y < 91,
+    roof: hipRoof(94, 91, {
+      eave: C('#7c3416'), ridge: C('#f6ad7b'),
+      T: C('#d96b34'), L: C('#e0763e'), B: C('#c25725'), R: C('#ae4b1e')
+    }),
+    wall: makeWall({
+      base: C('#f7f3eb'), trim: C('#854d27'), trimD: C('#5c3419'), trimH: 3,
+      shutter: C('#0f8a57'),
+      windows: { offset: 10, period: 26, width: 11, rows: [[5, 11]] },
+      skip: [[36, 58]],
+      doors: [{ x: 40, w: 14, h: 11, doorFrame: C('#6b3f21') }]
+    })
+  });
+  placeStructure(copa, 1408, 532, LOCATIONS[8].rects, 14, 'copa');
+
+  // -----------------------------------------------------------------------
+  // 11) REFEITÓRIO (Nordeste, prédio branco de telhado claro entre os lagos)
+  // -----------------------------------------------------------------------
+  const refeit = renderBuilding({
+    w: 160, h: 148, wallH: 18,
+    shape: (x, y) => x >= 0 && x < 160 && y >= 0 && y < 130,
+    roof: (x, y, ed) => {
+      const base = C('#e6ecf2');
+      if (ed <= 1) return C('#ffffff');
+      if (ed === 2) return C('#b9c4d0');
+      if (Math.abs(y - 65) <= 1) return C('#ffffff');
+      if (x % 12 === 0) return shade(base, 0.92);
+      return y < 65 ? shade(base, 1.03) : shade(base, 0.95);
+    },
+    wall: makeWall({
+      trimH: 3, stripe: 14,
+      windows: { offset: 8, period: 16, width: 10, rows: [[6, 12]] },
+      skip: [[68, 92]],
+      doors: [{ x: 72, w: 16, h: 12 }]
+    }),
+    decorate: (g) => { vent(g, 36, 40); vent(g, 80, 40); vent(g, 124, 40); acUnit(g, 136, 95); }
+  });
+  placeStructure(refeit, 1820, 430, LOCATIONS[9].rects, 16, 'refeitorio');
+
+  // -----------------------------------------------------------------------
+  // 12) GINÁSIO POLIESPORTIVO (Extremo Leste, teto arqueado metálico + anexo de vestiários)
+  // -----------------------------------------------------------------------
+  // Anexo lateral esquerdo (vestiários): [2080, 560, 80, 200]
+  const vestiarios = renderBuilding({
+    w: 82, h: 214, wallH: 16,
+    shape: (x, y) => x >= 0 && x < 82 && y >= 0 && y < 198,
+    roof: flatRoof(C('#dfe5ec'), C('#aeb8c2'), C('#f8fafc'), C('#c4cdd6')),
+    wall: makeWall({
+      trimH: 3,
+      windows: { offset: 6, period: 14, width: 8, rows: [[8, 12]] },
+      skip: [[30, 50]],
+      doors: [{ x: 34, w: 12, h: 11 }]
+    })
+  });
+  placeStructure(vestiarios, 2080, 760, [LOCATIONS[10].rects[1]], 14, 'ginasio-anexo');
+
+  // Nave principal do Ginásio com teto em abóbada metálica brilhante: [2160, 500, 210, 260]
+  const [gymC, gymG] = makeCanvas(214, 286);
+  const archW = 210, roofTopH = 248;
+  // Teto arqueado metálico com reflexo especular (como na foto aérea!)
+  for (let y = 0; y < roofTopH; y++) {
+    for (let x = 2; x < 2 + archW; x++) {
+      const u = (x - 2) / (archW - 1); // 0..1 da esquerda p/ direita
+      // Curvatura da fachada em arco na base do teto
+      const archLift = Math.round(Math.sin(u * Math.PI) * 14);
+      if (y < 14 - archLift) continue;
+      if (y > roofTopH - 1 - (14 - archLift)) continue;
+      const spec = Math.exp(-Math.pow((u - 0.34) / 0.18, 2));
+      let col = mix(C('#b9c3cf'), C('#f6f9fc'), spec * 0.85);
+      if (u > 0.72) col = mix(col, C('#8c97a6'), (u - 0.72) / 0.28);
+      if (y % 14 === 0) col = shade(col, 0.86);
+      if (x === 2 || x === 1 + archW) col = C('#e2e8f0');
+      rect(gymG, x, y, 1, 1, rgbStr(col));
+    }
+  }
+  // Parede frontal alta do ginásio acompanhando o arco metálico
+  for (let x = 2; x < 2 + archW; x++) {
+    const u = (x - 2) / (archW - 1);
+    const archLift = Math.round(Math.sin(u * Math.PI) * 14);
+    const topWall = roofTopH - (14 - archLift);
+    for (let y = topWall; y < 286; y++) {
+      const kb = 285 - y;
+      let col = '#eef1f4';
+      if (y === topWall || y === topWall + 1) col = '#0f8a57';
+      else if (kb < 4) col = kb === 0 ? '#0a6640' : '#0f8a57';
+      // Venezianas de ventilação superiores
+      else if (kb >= 22 && kb <= 27 && x > 18 && x < 194 && (x % 12 < 8)) col = (kb % 2 === 0) ? '#64748b' : '#94a3b8';
+      // Portões duplos do ginásio
+      else if (Math.abs(x - 107) <= 18 && kb < 15) {
+        if (Math.abs(x - 107) === 18 || kb === 14 || x === 107) col = '#0f8a57';
+        else col = ((x + kb) % 5 === 0) ? '#79a6cc' : '#23384e';
+      } else if (kb === 15 && Math.abs(x - 107) <= 20) col = '#0a6640';
+      // Pilares estruturais na fachada
+      else if ((x - 2) % 30 < 3) col = '#d5dce2';
+      rect(gymG, x, y, 1, 1, col);
+    }
+  }
+  drawIfcLogo(gymG, 44, 266, 2);
+  addOuterOutline(gymG, 214, 286, [24, 30, 38]);
+  placeStructure(gymC, 2158, 760, [LOCATIONS[10].rects[0]], 20, 'ginasio');
+}
+
+/* =========================================================================
+   9. FLORESTA DENSA, ÁRVORES DO CAMPUS, CARROS ESTACIONADOS E MOBILIÁRIO
+   ========================================================================= */
+function insideAnyRect(x, y, list, pad) {
+  pad = pad || 0;
+  for (const r of list) if (x >= r[0] - pad && x <= r[0] + r[2] + pad && y >= r[1] - pad && y <= r[1] + r[3] + pad) return true;
+  return false;
+}
+function nearAnySolid(x, y, pad) {
+  for (const s of SOLIDS) if (x >= s.x - pad && x <= s.x + s.w + pad && y >= s.y - pad && y <= s.y + s.h + pad) return true;
+  return false;
+}
+
+function populateWorld() {
+  const TV = buildTreeVariants();
+  const R = mulberry32(4242);
+
+  // 1) Barreira de colisão da Floresta Norte e Sudeste + Limites Sul/Rodovia
+  for (let x = 0; x < W; x += 32) {
+    const fn = Math.round(forestNorthBottom(x + 16));
+    addSolid(x, 0, 32, Math.max(8, fn - 4), 'floresta-norte');
+  }
+  for (let x = 1584; x < W; x += 32) {
+    const fse = Math.round(forestSETop(x + 16)) + 6;
+    if (fse < H) addSolid(x, fse, 32, H - fse, 'floresta-sul');
+  }
+  // Muro/cerca sul e limite da Rodovia SC-135 (deixando o trevo de entrada aberto até y=1452)
+  for (let x = 0; x < 1600; x += 32) {
+    if (x >= 1304 && x < 1396) {
+      addSolid(x, 1454, 32, H - 1454, 'limite-rodovia');
+    } else {
+      const limY = (x >= 496 && x < 1304)
+        ? Math.min(1362, Math.round(roadTop(x + 16)) - 16)
+        : Math.round(roadTop(x + 16)) - 12;
+      addSolid(x, limY, 32, H - limY, 'cerca-sul');
+    }
+  }
+  // Bordas extremas do mapa
+  addSolid(0, 0, 6, H, 'borda');
+  addSolid(W - 6, 0, 6, H, 'borda');
+  addSolid(0, 0, W, 6, 'borda');
+  addSolid(0, H - 6, W, 6, 'borda');
+
+  // 2) Cinturão denso de árvores na Floresta Norte e Sudeste
+  // Árvores profundas vão direto para o canvas estático (ordenadas por Y = zero custo por frame);
+  // Árvores da borda vão para SPRITES para oclusão 3/4 perfeita com o personagem.
+  const deepTrees = [];
+  for (let y = 14; y < 580; y += 17) {
+    for (let x = 12; x < W - 12; x += 19) {
+      const jx = x + Math.round((R() - 0.5) * 12);
+      const jy = y + Math.round((R() - 0.5) * 10);
+      const lim = forestNorthBottom(jx);
+      if (jy > lim + 3) continue;
+      const spr = (R() < 0.09) ? TV.pine[Math.floor(R() * TV.pine.length)]
+                : TV.forest[Math.floor(R() * TV.forest.length)];
+      if (jy < lim - 20) deepTrees.push({ spr, x: jx, y: jy });
+      else SPRITES.push({ c: spr.c, x: jx - spr.ox, y: jy - spr.oy, sortY: jy });
+    }
+  }
+  for (let y = 960; y < H - 20; y += 18) {
+    for (let x = 1580; x < W - 12; x += 19) {
+      const jx = x + Math.round((R() - 0.5) * 12);
+      const jy = y + Math.round((R() - 0.5) * 10);
+      const top = forestSETop(jx), bot = forestSEBottom(jx);
+      if (jy < top - 2 || jy > bot) continue;
+      const spr = (R() < 0.12) ? TV.pine[Math.floor(R() * TV.pine.length)]
+                : TV.forest[Math.floor(R() * TV.forest.length)];
+      if (jy > top + 24) deepTrees.push({ spr, x: jx, y: jy });
+      else SPRITES.push({ c: spr.c, x: jx - spr.ox, y: jy - spr.oy, sortY: jy });
+    }
+  }
+  deepTrees.sort((a, b) => a.y - b.y);
+  for (const t of deepTrees) bgx.drawImage(t.spr.c, t.x - t.spr.ox, t.y - t.spr.oy);
+
+  // 3) Árvores paisagísticas do Campus (avenida, jardins, margens dos lagos e gramados)
+  function placeCampusTree(tx, ty, spr, withSolid) {
+    bgx.save(); bgx.globalAlpha = 0.22;
+    ellipseFill(bgx, tx + 3, ty, Math.round(spr.w * 0.36), Math.round(spr.w * 0.18), '#000');
+    bgx.restore();
+    SPRITES.push({ c: spr.c, x: tx - spr.ox, y: ty - spr.oy, sortY: ty });
+    TREE_POS.push([tx, ty]);
+    if (withSolid) addSolid(tx - 4, ty - 4, 8, 5, 'arvore');
+  }
+
+  // Fileira ornamental no canteiro central da Avenida Interna
+  for (let ay = 458; ay <= 985; ay += 48) {
+    placeCampusTree(1350, ay, (ay % 96 === 458 % 96) ? TV.park[2] : TV.bush[0], ay % 96 === 458 % 96);
+  }
+  for (let ay = 1106; ay <= 1236; ay += 44) placeCampusTree(1350, ay, TV.park[0], true);
+
+  // Jardins em frente ao Bloco Administrativo (preservando a porta em x=1100)
+  for (const ax of [988, 1046, 1152, 1212]) placeCampusTree(ax, 978, TV.park[1], true);
+  // Ilhas do Estacionamento Principal
+  for (const ix of [818, 878, 938, 1034, 1094, 1154]) placeCampusTree(ix, 1168, TV.park[0], true);
+  // Canteiros do Pátio Acadêmico
+  placeCampusTree(832, 632, TV.flower[0], true);
+  placeCampusTree(882, 632, TV.park[1], true);
+  placeCampusTree(1162, 636, TV.flower[1], true);
+  placeCampusTree(1228, 636, TV.park[2], true);
+
+  // Árvores nas margens dos lagos, área verde oeste e entorno da Copa (fiéis à foto aérea)
+  const scenicTrees = [
+    [452, 1195, TV.forest[3]], [318, 1045, TV.park[2]], [195, 960, TV.pine[1]], [125, 1120, TV.forest[6]],
+    [265, 1245, TV.park[1]], [395, 885, TV.park[0]], [1485, 595, TV.park[2]], [1455, 650, TV.flower[0]],
+    [1495, 710, TV.park[1]], [1525, 860, TV.forest[2]], [1560, 965, TV.park[2]], [1625, 1055, TV.forest[8]],
+    [1715, 1110, TV.pine[0]], [1460, 1225, TV.park[1]], [1535, 1275, TV.forest[4]], [1655, 455, TV.park[0]],
+    [1735, 470, TV.park[2]], [1935, 535, TV.park[1]], [1995, 595, TV.forest[1]], [2035, 920, TV.park[0]],
+    [2320, 900, TV.pine[1]], [2045, 315, TV.park[2]], [2295, 340, TV.forest[5]], [2335, 430, TV.park[1]]
+  ];
+  for (const [tx, ty, spr] of scenicTrees) {
+    if (!LAKE_DEFS[0].inside(tx, ty, 6) && !LAKE_DEFS[1].inside(tx, ty, 6)) placeCampusTree(tx, ty, spr, true);
+  }
+  // Arbustos costeiros ao redor do Lago Principal
+  for (let deg = -165; deg < 175; deg += 14) {
+    if (deg > 152 || deg < -160) continue; // deixa livre a frente do píer
+    const ang = deg * Math.PI / 180;
+    const rad = polarR(LAKE_DEFS[0].keys, ang) + 10 + (R() * 10);
+    const bx = Math.round(LAKE_DEFS[0].cx + Math.cos(ang) * rad);
+    const by = Math.round(LAKE_DEFS[0].cy + Math.sin(ang) * rad);
+    if (Math.abs(by - 742) < 24 && bx < 1580) continue;
+    if (distToPolyline(bx, by, ROADS[1].pts) < 38 || distToPolyline(bx, by, ROADS[2].pts) < 36) continue;
+    if (nearAnySolid(bx, by, 10)) continue;
+    if (R() < 0.68) placeCampusTree(bx, by, TV.bush[Math.floor(R() * TV.bush.length)], false);
+  }
+
+  // 4) Carros Pixelados Estacionados (todos com colisão sólida AABB!)
+  function placeParkedCar(cx, cy, quarter, colorIdx) {
+    const col = CAR_COLORS[colorIdx % CAR_COLORS.length];
+    const spr = getCar(col, quarter);
+    bgx.save(); bgx.globalAlpha = 0.25;
+    bgx.fillStyle = '#000'; bgx.fillRect(cx + 3, cy + 3, spr.width - 2, spr.height - 2);
+    bgx.restore();
+    SPRITES.push({ c: spr, x: cx, y: cy, sortY: cy + spr.height - 1 });
+    addSolid(cx + 2, cy + 3, spr.width - 4, spr.height - 5, 'carro');
+  }
+
+  let ci = 0;
+  // Fileira norte do Estacionamento Principal
+  for (const slot of [0, 1, 3, 4, 5, 7, 9, 10, 12, 14, 15, 17, 19]) {
+    placeParkedCar(723 + slot * 24, 1005, (slot % 3 === 0) ? 2 : 0, ci++);
+  }
+  // Fileiras centrais (acima e abaixo das ilhas arborizadas)
+  for (const slot of [0, 2, 3, 5, 6]) placeParkedCar(797 + slot * 24, 1119, 2, ci++);
+  for (const slot of [1, 2, 4, 6]) placeParkedCar(1013 + slot * 24, 1119, 0, ci++);
+  for (const slot of [0, 1, 4, 5]) placeParkedCar(797 + slot * 24, 1185, 0, ci++);
+  for (const slot of [0, 2, 3, 6]) placeParkedCar(1013 + slot * 24, 1185, 2, ci++);
+  // Fileira sul (junto ao gradil)
+  for (const slot of [1, 2, 4, 5, 6, 8, 11, 13, 16, 18]) {
+    placeParkedCar(723 + slot * 24, 1314, (slot & 1) ? 0 : 2, ci++);
+  }
+  // Vagas oeste (horizontais, ao lado do abrigo azul)
+  for (const slot of [0, 1, 4, 5]) placeParkedCar(507, 1142 + slot * 22, (slot & 1) ? 1 : 3, ci++);
+  // Vagas leste ao longo da Avenida Interna (carros vermelho, branco, prata e azul visíveis na foto)
+  const eastSlots = [[0, 8], [2, 0], [5, 9], [8, 3], [11, 1]];
+  for (const [slot, cIdx] of eastSlots) placeParkedCar(1408, 826 + slot * 24, 3, cIdx);
+
+  // Trator agrícola estacionado no pátio do Barracão/Garagem
+  const [trC, trG] = makeCanvas(24, 20);
+  rect(trG, 2, 2, 7, 5, '#17171c'); rect(trG, 2, 13, 7, 5, '#17171c');
+  rect(trG, 16, 4, 5, 3, '#17171c'); rect(trG, 16, 13, 5, 3, '#17171c');
+  rect(trG, 4, 5, 16, 10, '#16a34a'); rect(trG, 5, 6, 7, 8, '#dcfce7');
+  rect(trG, 6, 7, 5, 6, '#334155'); rect(trG, 13, 6, 6, 8, '#15803d');
+  rect(trG, 19, 8, 3, 4, '#facc15');
+  addOuterOutline(trG, 24, 20, [18, 22, 20]);
+  SPRITES.push({ c: trC, x: 248, y: 716, sortY: 735 });
+  addSolid(250, 719, 20, 15, 'trator');
+
+  // 5) Mobiliário Urbano: Postes de Luz, Bancos e Mesas com Guarda-sol na Copa
+  const lamp = makeLamp(), bench = makeBench(), umb = makeUmbrellaTable();
+  const lampCoords = [
+    [1300, 440], [1300, 580], [1300, 720], [1300, 860], [1300, 1000], [1300, 1180], [1300, 1320],
+    [1398, 440], [1398, 620], [1398, 780], [1398, 1180], [1398, 1320],
+    [620, 390], [880, 390], [1160, 390], [1560, 390], [2060, 772], [2350, 772]
+  ];
+  for (const [lx, ly] of lampCoords) SPRITES.push({ c: lamp, x: lx - 4, y: ly - 30, sortY: ly });
+
+  const benchCoords = [[760, 580], [928, 580], [1142, 600], [1495, 726], [1495, 764], [2060, 835], [2315, 835]];
+  for (const [bx, by] of benchCoords) {
+    SPRITES.push({ c: bench, x: bx, y: by, sortY: by + 9 });
+    addSolid(bx + 1, by + 3, 16, 6, 'banco');
+  }
+  for (const [ux, uy] of [[1414, 548], [1474, 548]]) {
+    SPRITES.push({ c: umb, x: ux, y: uy, sortY: uy + 22 });
+    addSolid(ux + 4, uy + 15, 14, 7, 'mesa-copa');
+  }
+
+  // Pré-ordena SPRITES por coordenada Y da base (profundidade 3/4)
+  SPRITES.sort((a, b) => a.sortY - b.sortY);
+}
+
+/* =========================================================================
+   10. PLACAS FLUTUANTES DOS PRÉDIOS E MINIMAPA
+   ========================================================================= */
+const WORLD_LABELS = [
+  ...LOCATIONS.map(l => ({ id: l.id, text: l.name.split('•')[0].trim(), x: l.label[0], y: l.label[1], primary: true })),
+  { id: 'sc135', text: 'Rodovia SC-135', x: 1120, y: 1478, primary: false },
+  { id: 'estac', text: 'Estacionamento Principal', x: 965, y: 1076, primary: false },
+  { id: 'motos', text: 'Abrigo Motos / Bikes', x: 659, y: 1156, primary: false },
+  { id: 'lago1', text: 'Lago Principal', x: 1785, y: 745, primary: false },
+  { id: 'lago2', text: 'Lago Norte', x: 2160, y: 348, primary: false },
+  { id: 'areia', text: 'Quadra de Areia', x: 2190, y: 868, primary: false },
+  { id: 'mata', text: 'Mata Nativa', x: 1020, y: 268, primary: false }
+];
+
+const miniCanvas = document.getElementById('minimap');
+const miniCtx = miniCanvas.getContext('2d');
+const MINI_W = 210, MINI_H = 140;
+miniCanvas.width = MINI_W; miniCanvas.height = MINI_H;
+let miniBase = null;
+
+function buildMinimap() {
+  const [mc, mg] = makeCanvas(MINI_W, MINI_H);
+  mg.imageSmoothingEnabled = true;
+  mg.drawImage(bg, 0, 0, W, H, 0, 0, MINI_W, MINI_H);
+  const sx = MINI_W / W, sy = MINI_H / H;
+  for (const lk of LAKES) mg.drawImage(lk.frames[0], 0, 0, lk.w, lk.h, lk.x * sx, lk.y * sy, lk.w * sx, lk.h * sy);
+
+  // Destaca cada prédio no minimapa para leitura imediata
+  for (const loc of LOCATIONS) {
+    for (const r of loc.rects) {
+      mg.fillStyle = 'rgba(248,250,252,0.88)';
+      mg.fillRect(r[0] * sx, r[1] * sy, Math.max(2, r[2] * sx), Math.max(2, r[3] * sy));
+      mg.strokeStyle = '#10b981';
+      mg.lineWidth = 0.8;
+      mg.strokeRect(r[0] * sx, r[1] * sy, Math.max(2, r[2] * sx), Math.max(2, r[3] * sy));
+    }
+  }
+  miniBase = mc;
+}
+
+function renderMinimap(cam, vw, vh, player, activeLocId, t) {
+  if (!miniBase || miniWrap.style.display === 'none') return;
+  miniCtx.clearRect(0, 0, MINI_W, MINI_H);
+  miniCtx.drawImage(miniBase, 0, 0);
+  const sx = MINI_W / W, sy = MINI_H / H;
+
+  // Destaca prédio próximo
+  if (activeLocId) {
+    const loc = LOCATIONS.find(l => l.id === activeLocId);
+    if (loc) {
+      miniCtx.fillStyle = 'rgba(16,185,129,0.55)';
+      for (const r of loc.rects) miniCtx.fillRect(r[0] * sx - 1, r[1] * sy - 1, r[2] * sx + 2, r[3] * sy + 2);
+    }
+  }
+
+  // Retângulo da câmera atual
+  miniCtx.strokeStyle = 'rgba(139,92,246,0.9)';
+  miniCtx.lineWidth = 1.2;
+  miniCtx.strokeRect(cam.x * sx, cam.y * sy, vw * sx, vh * sy);
+
+  // Ponto pulsante do jogador
+  const px = player.x * sx, py = player.y * sy;
+  const pulse = 3.5 + Math.sin(t * 6) * 1.4;
+  miniCtx.fillStyle = 'rgba(16,185,129,0.38)';
+  miniCtx.beginPath(); miniCtx.arc(px, py, pulse + 2.5, 0, Math.PI * 2); miniCtx.fill();
+  miniCtx.fillStyle = '#10b981';
+  miniCtx.beginPath(); miniCtx.arc(px, py, 3, 0, Math.PI * 2); miniCtx.fill();
+  miniCtx.fillStyle = '#ffffff';
+  miniCtx.fillRect(px - 1, py - 1, 2, 2);
+}
+
+/* =========================================================================
+   11. MOTOR DE JOGO: JOGADOR, COLISÃO SLIDING AABB, CÂMERA LERP E UI
+   ========================================================================= */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const locBox = document.getElementById('location');
+const locLabel = document.getElementById('loc-label');
+const locName = document.getElementById('loc-name');
+const coordsEl = document.getElementById('coords');
+const interactEl = document.getElementById('interact');
+const intName = document.getElementById('int-name');
+const intDesc = document.getElementById('int-desc');
+const btnHitbox = document.getElementById('btn-hitbox');
+const btnRun = document.getElementById('btn-run');
+const btnHelp = document.getElementById('btn-help');
+const helpEl = document.getElementById('help');
+const debugBadge = document.getElementById('debug-badge');
+const miniWrap = document.getElementById('minimap-wrap');
+
+let DPR = 1, screenW = window.innerWidth, screenH = window.innerHeight;
+let zoom = window.innerWidth < 768 ? 2 : 2;
+const ZOOM_STEPS = [1, 1.5, 2, 3, 4];
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  screenW = window.innerWidth; screenH = window.innerHeight;
+  canvas.width = Math.round(screenW * DPR);
+  canvas.height = Math.round(screenH * DPR);
+  ctx.imageSmoothingEnabled = false;
+}
+window.addEventListener('resize', resize);
+
+// Estado do jogador (spawn na entrada da Guarita / Pórtico, pista direita de acesso)
+const player = {
+  x: 1374, y: 1394,
+  dir: 'up',
+  frame: 0, animTimer: 0,
+  moving: false, running: false,
+  hbHalfW: 5, hbH: 7 // Hitbox nos pés: [x - 5, y - 7, 10, 7]
+};
+let PLAYER_FRAMES = null;
+
+const cam = { x: player.x - 300, y: player.y - 200, init: false };
+const keys = new Set();
+let showHitboxes = false;
+let runToggle = false;
+let clickTarget = null; // {x, y, stuckTimer}
+let pointerHeld = false, pointerScreen = { x: 0, y: 0 };
+
+function toggleHitboxes() {
+  showHitboxes = !showHitboxes;
+  btnHitbox.classList.toggle('on', showHitboxes);
+  debugBadge.classList.toggle('show', showHitboxes);
+}
+function toggleRun() {
+  runToggle = !runToggle;
+  btnRun.classList.toggle('on', runToggle);
+  btnRun.classList.toggle('green', runToggle);
+}
+btnHitbox.addEventListener('click', toggleHitboxes);
+btnRun.addEventListener('click', toggleRun);
+btnHelp.addEventListener('click', () => helpEl.classList.toggle('hidden'));
+
+window.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+  keys.add(k);
+  if (!e.repeat) {
+    if (k === 'h' || k === 'c') toggleHitboxes();
+    else if (k === 'm') miniWrap.style.display = (miniWrap.style.display === 'none') ? '' : 'none';
+    else if (e.key === '+' || e.key === '=') {
+      const idx = ZOOM_STEPS.findIndex(z => z >= zoom);
+      zoom = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, (idx < 0 ? 2 : idx) + 1)];
+    } else if (e.key === '-' || e.key === '_') {
+      const idx = ZOOM_STEPS.findIndex(z => z >= zoom);
+      zoom = ZOOM_STEPS[Math.max(0, (idx < 0 ? 2 : idx) - 1)];
+    }
+  }
+});
+window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
+window.addEventListener('blur', () => { keys.clear(); pointerHeld = false; });
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const idx = ZOOM_STEPS.findIndex(z => z >= zoom);
+  if (e.deltaY < 0) zoom = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, (idx < 0 ? 2 : idx) + 1)];
+  else zoom = ZOOM_STEPS[Math.max(0, (idx < 0 ? 2 : idx) - 1)];
+}, { passive: false });
+
+function screenToWorld(clientX, clientY) {
+  return { x: cam.x + clientX / zoom, y: cam.y + clientY / zoom };
+}
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.button !== undefined && e.button !== 0) return;
+  pointerHeld = true;
+  pointerScreen.x = e.clientX; pointerScreen.y = e.clientY;
+  const wp = screenToWorld(e.clientX, e.clientY);
+  clickTarget = { x: clamp(wp.x, 12, W - 12), y: clamp(wp.y, 14, H - 10), stuck: 0 };
+});
+window.addEventListener('pointermove', (e) => {
+  if (!pointerHeld) return;
+  pointerScreen.x = e.clientX; pointerScreen.y = e.clientY;
+  const wp = screenToWorld(e.clientX, e.clientY);
+  clickTarget = { x: clamp(wp.x, 12, W - 12), y: clamp(wp.y, 14, H - 10), stuck: 0 };
+});
+window.addEventListener('pointerup', () => { pointerHeld = false; });
+
+// Clique no minimapa também move o personagem até o setor clicado
+miniCanvas.addEventListener('pointerdown', (e) => {
+  const r = miniCanvas.getBoundingClientRect();
+  const mx = (e.clientX - r.left) / r.width * W;
+  const my = (e.clientY - r.top) / r.height * H;
+  clickTarget = { x: clamp(mx, 12, W - 12), y: clamp(my, 14, H - 10), stuck: 0 };
+});
+
+// Colisão AABB rigorosa com resolução separada nos eixos X e Y (deslizamento suave / sliding)
+function moveWithCollision(dx, dy) {
+  const hw = player.hbHalfW, hh = player.hbH;
+
+  // Eixo X
+  if (dx !== 0) {
+    player.x += dx;
+    for (let i = 0; i < SOLIDS.length; i++) {
+      const s = SOLIDS[i];
+      if (player.y > s.y && player.y - hh < s.y + s.h &&
+          player.x + hw > s.x && player.x - hw < s.x + s.w) {
+        if (dx > 0) player.x = s.x - hw;
+        else player.x = s.x + s.w + hw;
+      }
+    }
+  }
+  // Eixo Y
+  if (dy !== 0) {
+    player.y += dy;
+    for (let i = 0; i < SOLIDS.length; i++) {
+      const s = SOLIDS[i];
+      if (player.x + hw > s.x && player.x - hw < s.x + s.w &&
+          player.y > s.y && player.y - hh < s.y + s.h) {
+        if (dy > 0) player.y = s.y;
+        else player.y = s.y + s.h + hh;
+      }
+    }
+  }
+  player.x = clamp(player.x, 8 + hw, W - 8 - hw);
+  player.y = clamp(player.y, 8 + hh, H - 8);
+}
+
+// Verifica proximidade com portas e prédios para atualizar HUD e balão de descrição
+let activeDoor = null;     // { loc, door: [x,y] }
+let activeLocId = null;
+let lastHudKey = '';
+
+function updateProximity() {
+  let bestDoor = null, bestDoorD = 48;
+  let nearLoc = null, nearLocD = 68;
+
+  for (const loc of LOCATIONS) {
+    for (const dr of loc.doors) {
+      const d = Math.hypot(player.x - dr[0], player.y - dr[1]);
+      if (d < bestDoorD) { bestDoorD = d; bestDoor = { loc, door: dr }; }
+      if (d < nearLocD) { nearLocD = d; nearLoc = loc; }
+    }
+    for (const r of loc.rects) {
+      const d = rectDist(player.x, player.y, r);
+      if (d < nearLocD) { nearLocD = d; nearLoc = loc; }
+    }
+  }
+
+  activeDoor = bestDoor;
+  activeLocId = bestDoor ? bestDoor.loc.id : (nearLoc ? nearLoc.id : null);
+
+  if (bestDoor) {
+    intName.textContent = bestDoor.loc.name;
+    intDesc.textContent = bestDoor.loc.desc;
+    interactEl.classList.add('show');
+  } else {
+    interactEl.classList.remove('show');
+  }
+
+  // Atualiza barra superior de localização
+  let lbl = '', title = 'Caminhando pelo Campus', isNear = false;
+  if (nearLoc) {
+    lbl = 'Próximo a:'; title = nearLoc.name; isNear = true;
+  } else if (LAKE_DEFS[0].inside(player.x, player.y, 34)) {
+    lbl = 'Próximo a:'; title = 'Lago Principal'; isNear = true;
+  } else if (LAKE_DEFS[1].inside(player.x, player.y, 28)) {
+    lbl = 'Próximo a:'; title = 'Lago Menor'; isNear = true;
+  } else if (player.y > roadTop(player.x) - 55) {
+    lbl = 'Próximo a:'; title = 'Rodovia SC-135';
+  } else {
+    for (const z of ZONES) {
+      if (rectDist(player.x, player.y, z.r) < 12) { lbl = 'Setor:'; title = z.name; break; }
+    }
+  }
+  const hudKey = lbl + '|' + title + '|' + isNear;
+  if (hudKey !== lastHudKey) {
+    lastHudKey = hudKey;
+    locLabel.textContent = lbl;
+    locName.textContent = title;
+    locBox.classList.toggle('near', isNear);
+  }
+  coordsEl.textContent = Math.round(player.x) + ' , ' + Math.round(player.y);
+}
+
+function update(dt) {
+  let ix = 0, iy = 0;
+  if (keys.has('w') || keys.has('arrowup')) iy -= 1;
+  if (keys.has('s') || keys.has('arrowdown')) iy += 1;
+  if (keys.has('a') || keys.has('arrowleft')) ix -= 1;
+  if (keys.has('d') || keys.has('arrowright')) ix += 1;
+
+  if (ix !== 0 || iy !== 0) {
+    clickTarget = null; // teclado assume prioridade imediata
+    const len = Math.hypot(ix, iy);
+    ix /= len; iy /= len;
+  } else if (clickTarget) {
+    const dx = clickTarget.x - player.x, dy = clickTarget.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 4) {
+      clickTarget = null;
+    } else {
+      ix = dx / dist; iy = dy / dist;
+    }
+  }
+
+  player.running = keys.has('shift') || runToggle;
+  const speed = player.running ? 205 : 118;
+  player.moving = (ix !== 0 || iy !== 0);
+
+  if (player.moving) {
+    if (Math.abs(ix) > Math.abs(iy)) player.dir = ix > 0 ? 'right' : 'left';
+    else player.dir = iy > 0 ? 'down' : 'up';
+
+    const prevX = player.x, prevY = player.y;
+    moveWithCollision(ix * speed * dt, iy * speed * dt);
+
+    // Se estiver indo por clique e bater numa parede sem avançar, cancela suavemente
+    if (clickTarget && !pointerHeld && Math.hypot(player.x - prevX, player.y - prevY) < 0.15) {
+      clickTarget.stuck += dt;
+      if (clickTarget.stuck > 0.25) clickTarget = null;
+    }
+
+    player.animTimer += dt * (player.running ? 11.5 : 7.5);
+    player.frame = Math.floor(player.animTimer) & 3;
+  } else {
+    player.frame = 0;
+    player.animTimer = 0;
+  }
+
+  // Câmera suave (lerp) centralizada no jogador e limitada às bordas do mapa
+  const vw = Math.min(W, screenW / zoom), vh = Math.min(H, screenH / zoom);
+  const targetX = clamp(player.x - vw / 2, 0, Math.max(0, W - vw));
+  const targetY = clamp(player.y - vh / 2, 0, Math.max(0, H - vh));
+  if (!cam.init) {
+    cam.x = targetX; cam.y = targetY; cam.init = true;
+  } else {
+    const alpha = 1 - Math.exp(-9.5 * dt);
+    cam.x += (targetX - cam.x) * alpha;
+    cam.y += (targetY - cam.y) * alpha;
+  }
+
+  updateProximity();
+}
+
+function render(now) {
+  const t = now * 0.001;
+  const waterFrame = Math.floor(t * 3.2) & 3;
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.fillStyle = '#0d0d12';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const scale = zoom * DPR;
+  const vw = screenW / zoom, vh = screenH / zoom;
+  // Arredonda câmera ao pixel da tela para evitar subpixel shimmer em pixel art
+  const cx = Math.round(cam.x * scale) / scale;
+  const cy = Math.round(cam.y * scale) / scale;
+
+  ctx.save();
+  ctx.scale(scale, scale);
+  ctx.translate(-cx, -cy);
+
+  // 1) Recorte visível do cenário base (grama, ruas, calçadas, sombras e fachadas)
+  const sx0 = clamp(Math.floor(cx) - 2, 0, W), sy0 = clamp(Math.floor(cy) - 2, 0, H);
+  const sw = clamp(Math.ceil(vw) + 4, 1, W - sx0), sh = clamp(Math.ceil(vh) + 4, 1, H - sy0);
+  ctx.drawImage(bg, sx0, sy0, sw, sh, sx0, sy0, sw, sh);
+
+  // 2) Água animada dos lagos + píer/vitórias-régias
+  for (const lk of LAKES) {
+    if (lk.x + lk.w < cx || lk.x > cx + vw || lk.y + lk.h < cy || lk.y > cy + vh) continue;
+    ctx.drawImage(lk.frames[waterFrame], lk.x, lk.y);
+  }
+  for (const dec of DECOR) ctx.drawImage(dec.c, dec.x, dec.y);
+
+  // 3) Marcador de destino do clique/toque no chão
+  if (clickTarget) {
+    const r = 4 + Math.sin(t * 8) * 1.5;
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(Math.round(clickTarget.x - r), Math.round(clickTarget.y - r * 0.6), Math.round(r * 2), Math.round(r * 1.2));
+  }
+
+  // 4) Indicador discreto nas portas e destaque na porta ativa
+  for (const loc of LOCATIONS) {
+    for (const dr of loc.doors) {
+      const isAct = activeDoor && activeDoor.door === dr;
+      ctx.fillStyle = isAct ? 'rgba(16,185,129,0.55)' : 'rgba(16,185,129,0.22)';
+      ctx.fillRect(dr[0] - 5, dr[1] - 1, 10, 3);
+    }
+  }
+
+  // 5) Sprites ordenados por profundidade Y + Estudante intercalado na altura exata dos pés
+  const px = Math.round(player.x), py = Math.round(player.y);
+  let playerDrawn = false;
+  const drawPlayerNow = () => {
+    // Sombra oval nos pés do estudante
+    ctx.fillStyle = 'rgba(0,0,0,0.32)';
+    ctx.fillRect(px - 5, py - 2, 10, 3);
+    ctx.fillRect(px - 4, py - 3, 8, 5);
+    const spr = PLAYER_FRAMES[player.dir][player.frame];
+    ctx.drawImage(spr, px - 8, py - 23);
+    playerDrawn = true;
+  };
+
+  const viewL = cx - 60, viewR = cx + vw + 60, viewT = cy - 80, viewB = cy + vh + 60;
+  for (let i = 0; i < SPRITES.length; i++) {
+    const s = SPRITES[i];
+    if (!playerDrawn && s.sortY >= py) drawPlayerNow();
+    if (s.x + s.c.width < viewL || s.x > viewR || s.y + s.c.height < viewT || s.y > viewB) continue;
+    ctx.drawImage(s.c, s.x, s.y);
+  }
+  if (!playerDrawn) drawPlayerNow();
+
+  // 6) Coberturas superiores (Pórtico de Entrada arqueado sobre as pistas)
+  for (const ov of OVERLAYS) ctx.drawImage(ov.c, ov.x, ov.y);
+
+  // 7) Ícone flutuante de interação acima da porta ativa
+  if (activeDoor) {
+    const bob = Math.round(Math.sin(t * 5.5) * 2);
+    const dx = activeDoor.door[0], dy = activeDoor.door[1] - 22 + bob;
+    ctx.fillStyle = '#0d0d12';
+    ctx.fillRect(dx - 5, dy - 6, 11, 10);
+    ctx.fillStyle = '#10b981';
+    ctx.fillRect(dx - 4, dy - 5, 9, 8);
+    ctx.fillStyle = '#0d0d12';
+    ctx.fillRect(dx, dy - 4, 1, 1);
+    ctx.fillRect(dx, dy - 2, 1, 4);
+  }
+
+  // 8) Modo Debug: visualização de todas as Hitboxes de colisão AABB (tecla H ou C)
+  if (showHitboxes) {
+    ctx.lineWidth = 1;
+    for (let i = 0; i < SOLIDS.length; i++) {
+      const s = SOLIDS[i];
+      if (s.x + s.w < viewL || s.x > viewR || s.y + s.h < viewT || s.y > viewB) continue;
+      const isWater = s.tag === 'lago';
+      ctx.fillStyle = isWater ? 'rgba(56,189,248,0.22)' : 'rgba(239,68,68,0.26)';
+      ctx.strokeStyle = isWater ? 'rgba(56,189,248,0.85)' : 'rgba(248,113,113,0.92)';
+      ctx.fillRect(s.x, s.y, s.w, s.h);
+      ctx.strokeRect(s.x + 0.5, s.y + 0.5, Math.max(0, s.w - 1), Math.max(0, s.h - 1));
+    }
+    // Raios de interação das portas
+    ctx.strokeStyle = 'rgba(16,185,129,0.75)';
+    for (const loc of LOCATIONS) {
+      for (const dr of loc.doors) {
+        ctx.beginPath(); ctx.arc(dr[0], dr[1], 48, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    // Hitbox dos pés do jogador
+    ctx.fillStyle = 'rgba(16,185,129,0.45)';
+    ctx.strokeStyle = '#a7f3d0';
+    ctx.fillRect(player.x - player.hbHalfW, player.y - player.hbH, player.hbHalfW * 2, player.hbH);
+    ctx.strokeRect(player.x - player.hbHalfW, player.y - player.hbH, player.hbHalfW * 2, player.hbH);
+  }
+
+  ctx.restore(); // Fim do espaço do mundo; passa para espaço de tela nítido (DPR)
+
+  // 9) Placas / Rótulos discretos flutuantes sobre cada prédio e setor
+  ctx.save();
+  ctx.scale(DPR, DPR);
+  ctx.font = '600 10.5px Poppins, "Segoe UI", system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const floatBob = Math.sin(t * 2.2) * 1.8;
+
+  for (const lb of WORLD_LABELS) {
+    if (!lb.primary && zoom < 1.5) continue;
+    const sx = (lb.x - cx) * zoom;
+    const sy = (lb.y - cy) * zoom + (lb.primary ? floatBob : 0);
+    if (sx < -90 || sx > screenW + 90 || sy < -30 || sy > screenH + 30) continue;
+
+    const isHighlighted = lb.id === activeLocId;
+    const padX = 7, boxH = 18;
+    const tw = Math.ceil(ctx.measureText(lb.text).width);
+    const boxW = tw + padX * 2 + (lb.primary ? 8 : 0);
+    const bx = Math.round(sx - boxW / 2), by = Math.round(sy - boxH / 2);
+
+    ctx.fillStyle = isHighlighted ? 'rgba(13, 24, 20, 0.92)' : 'rgba(13, 13, 18, 0.78)';
+    ctx.strokeStyle = isHighlighted ? '#10b981' : (lb.primary ? 'rgba(139, 92, 246, 0.52)' : 'rgba(255,255,255,0.16)');
+    ctx.lineWidth = isHighlighted ? 1.4 : 1;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(bx, by, boxW, boxH, 5);
+    else ctx.rect(bx, by, boxW, boxH);
+    ctx.fill();
+    ctx.stroke();
+
+    if (lb.primary) {
+      ctx.fillStyle = isHighlighted ? '#10b981' : '#8b5cf6';
+      ctx.fillRect(bx + 6, by + 7, 4, 4);
+    }
+    ctx.fillStyle = isHighlighted ? '#ecfdf5' : (lb.primary ? '#f1f5f9' : '#cbd5e1');
+    ctx.fillText(lb.text, sx + (lb.primary ? 4 : 0), by + boxH / 2 + 0.5);
+  }
+  ctx.restore();
+  ctx.restore();
+
+  renderMinimap(cam, vw, vh, player, activeLocId, t);
+}
+
+/* =========================================================================
+   12. INICIALIZAÇÃO E LOOP PRINCIPAL (60 FPS)
+   ========================================================================= */
+function init() {
+  resize();
+  [bg, bgx] = makeCanvas(W, H);
+  buildPatterns();
+  drawTerrain();
+  buildLakes();
+  buildStructures();
+  populateWorld();
+  PLAYER_FRAMES = buildPlayerFrames();
+  buildMinimap();
+  updateProximity();
+
+  // Oculta tela de carregamento e inicia o loop
+  const loading = document.getElementById('loading');
+  loading.classList.add('hide');
+  setTimeout(() => loading.remove(), 450);
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000);
+    last = now;
+    update(dt);
+    render(now);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+// Aguarda um frame para pintar a tela de loading antes de gerar a arte procedural
+requestAnimationFrame(() => setTimeout(init, 30));
+})();
+</script>
+</body>
+</html>
