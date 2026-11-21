@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0d12"><title>Copa / Cantina · IFC Videira</title>
+<link rel="stylesheet" href="style.css?v=20261116-2">
+<script src="data.js?v=20261116-2" defer></script><script src="places.js?v=20261116-2" defer></script><script src="access.js?v=20261116-2" defer></script><script src="layout.js?v=20261116-2" defer></script>
+<script src="campus-layout.js?v=20261116-2" defer></script><script src="core.js?v=20261116-2" defer></script><script src="student.js?v=20261116-2" defer></script><script src="art.js?v=20261116-2" defer></script><script src="engine.js?v=20261116-2" defer></script>
+</head>
+<body data-building="copa" data-floor="1">
+<main class="app">
+<header class="topbar">
+<a id="campus-link" class="campus" href="../index.html?from=copa&amp;saida=1" aria-label="Voltar ao campus">← <span>Campus</span></a>
+<div class="brand"><div class="brand-mark ifc-logo" aria-hidden="true"><i class="r"></i><i></i><i></i><i></i><i></i><i class="e"></i><i></i><i></i><i></i><i></i><i></i><i class="e"></i></div><div><div class="eyebrow">IFC VIDEIRA · INTERIOR</div><h1>Copa / Cantina</h1></div></div>
+
+<button id="directory-open" aria-haspopup="dialog">Ambientes <span aria-hidden="true">⌕</span></button>
+</header>
+<section class="map-region" aria-label="Mapa interno de Copa / Cantina">
+<canvas id="interior" tabindex="0" aria-label="Planta vista de cima. Use WASD ou as setas para caminhar pelas portas. Clique ou toque para seguir um caminho até o local."></canvas>
+<div class="location-card"><span class="eyebrow">INTERIOR · PLANTA ILUSTRATIVA</span><strong id="current-location">Copa / Cantina</strong><span id="location-description">Corredores e salas no mesmo mapa</span></div>
+<div id="overview-note" class="overview-note"><strong>Explore Copa / Cantina.</strong><span>Escolha uma sala no mapa ou comece a caminhar.</span></div>
+<div class="zoom-controls" aria-label="Controles da câmera"><div><button id="zoom-out" aria-label="Diminuir zoom">−</button><button id="zoom-in" aria-label="Aumentar zoom">+</button></div><button id="fit">Ver prédio inteiro</button><button id="follow">Seguir aluno</button></div>
+<div id="dpad" class="dpad" hidden aria-label="Controle de movimento"><button data-direction="up" aria-label="Andar para cima">↑</button><button data-direction="left" aria-label="Andar para a esquerda">←</button><button data-direction="down" aria-label="Andar para baixo">↓</button><button data-direction="right" aria-label="Andar para a direita">→</button></div>
+<div class="map-key"><i></i> Portas abertas <b></b> Piso tátil</div>
+</section>
+<footer>
+<div class="status"><strong id="status">Clique no mapa para caminhar</strong><small id="room-note">Planta ilustrativa: divisões e mobiliário a confirmar.</small></div>
+<div class="footer-actions"><button id="cancel-route" hidden>Parar percurso</button><button id="controls" aria-pressed="false" aria-controls="dpad">Controle</button><button id="action" disabled>Explorar</button><button id="help-open" aria-label="Ajuda" aria-haspopup="dialog">?</button></div>
+</footer>
+</main>
+<dialog id="directory" aria-labelledby="directory-title"><div class="dialog-heading"><div><span class="eyebrow">AMBIENTES</span><h2 id="directory-title">Para onde vamos?</h2></div><form method="dialog"><button aria-label="Fechar lista de salas">✕</button></form></div>
+<p>Escolha um ambiente. O aluno caminha até ele, respeitando paredes e móveis.</p><label class="sr-only" for="search">Buscar sala ou ambiente</label><input id="search" type="search" autocomplete="off" placeholder="Nome do ambiente…"><div id="room-list"></div>
+</dialog>
+<dialog id="help" aria-labelledby="help-title"><div class="dialog-heading"><h2 id="help-title">Explore o prédio</h2><form method="dialog"><button aria-label="Fechar ajuda">✕</button></form></div>
+<p><strong>WASD ou setas:</strong> caminhar em qualquer direção. <strong>Shift:</strong> correr. As portas estão abertas: atravesse-as para entrar e sair das salas.</p>
+<p><strong>Clique ou toque</strong> em uma sala ou no piso para caminhar até lá. O trajeto contorna paredes e móveis. Arraste para mover a câmera e use a roda, pinça ou +/− para ajustar o zoom.</p>
+<p><strong>E ou botão de ação:</strong> usar uma saída ou conexão quando estiver perto. A volta ao campus corresponde à porta utilizada.</p>
+<p>No celular, ative <strong>Controle</strong> para mostrar os botões de direção. Use <strong>Ver prédio inteiro</strong> para enxergar todo o interior e <strong>Seguir aluno</strong> para voltar à visão próxima.</p>
+<p>O fundo preto é o espaço fora do prédio. Este interior é uma representação inicial: a posição dos ambientes, as divisões e os móveis serão ajustados com novas referências.</p>
+</dialog>
+<div id="announcement" role="status" aria-live="polite" class="sr-only"></div>
+<noscript>Ative o JavaScript para explorar o prédio.</noscript>
+</body></html>

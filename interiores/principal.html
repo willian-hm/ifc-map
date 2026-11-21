@@ -1,0 +1,9 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prédio Principal · IFC Videira</title>
+<script>
+(function(){
+  const p=new URLSearchParams(location.hash.slice(1)),room=p.get('sala')||p.get('room')||'';
+  const second=/^[BDF]/.test(room)||['df','b'].includes(p.get('area'));
+  location.replace((second?'segundo-andar.html':'primeiro-andar.html')+location.search+(room?'#sala='+encodeURIComponent(room):''));
+})();
+</script></head><body><a href="primeiro-andar.html">Entrar no primeiro andar</a> · <a href="segundo-andar.html">Entrar no segundo andar</a></body></html>

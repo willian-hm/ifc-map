@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>IFC Campus Videira • Mapa 2D Pixel Art</title>
 <style>
   :root{
@@ -16,7 +16,7 @@
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font);
     -webkit-user-select:none;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
-  #game{position:fixed;inset:0;display:block;image-rendering:pixelated;image-rendering:crisp-edges;cursor:crosshair}
+  #game{position:fixed;inset:0;width:100%;height:100%;display:block;image-rendering:pixelated;image-rendering:crisp-edges;cursor:crosshair}
   .panel{background:var(--panel);border:1px solid var(--purple-soft);border-radius:12px;
     box-shadow:0 8px 30px rgba(0,0,0,.45);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
 
@@ -68,7 +68,10 @@
   #interact{position:fixed;left:50%;bottom:22px;transform:translate(-50%,24px);opacity:0;pointer-events:none;
     padding:12px 18px 13px;min-width:280px;max-width:min(520px,calc(100vw - 28px));z-index:6;transition:.22s ease;
     border-color:rgba(16,185,129,.55)}
-  #interact.show{opacity:1;transform:translate(-50%,0)}
+  #interact.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+  #enter-building{display:block;margin-top:10px;padding:10px 14px;border-radius:8px;background:#9ae2b4;color:#10271b;font-size:13px;font-weight:700;text-align:center;text-decoration:none;min-height:44px;box-sizing:border-box}
+  #enter-building[hidden]{display:none}
+  #enter-building:focus-visible{outline:3px solid #ffe39a;outline-offset:3px}
   #interact .tag{font-family:var(--mono);font-size:9px;letter-spacing:1.8px;color:var(--green);margin-bottom:4px;display:flex;align-items:center;gap:6px}
   #interact .tag::before{content:'';width:7px;height:7px;background:var(--green);display:inline-block}
   #interact .name{font-size:16px;font-weight:700;color:#fff}
@@ -96,11 +99,48 @@
   @keyframes logoIn{0%{opacity:0;transform:translateY(6px) scale(.92)}100%{opacity:1;transform:none}}
   @keyframes load{0%{transform:translateX(-100%)}100%{transform:translateX(250%)}}
 
+  button{touch-action:manipulation}
+  button:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+  #view-controls{position:fixed;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));
+    z-index:7;padding:6px;display:grid;grid-template-columns:44px 44px;gap:5px}
+  #view-controls button{min-height:44px;background:rgba(255,255,255,.06);border:1px solid var(--purple-soft);
+    border-radius:7px;color:var(--text);font:600 12px var(--font);cursor:pointer}
+  #view-controls button:disabled{opacity:.35;cursor:default}
+  #view-controls button.on{border-color:var(--green);background:rgba(16,185,129,.18)}
+  #btn-fit,#btn-follow{grid-column:1 / -1}
+  #joystick{display:none;position:fixed;left:max(18px,env(safe-area-inset-left));bottom:calc(64px + env(safe-area-inset-bottom));
+    width:108px;height:108px;z-index:8;border:1px solid rgba(255,255,255,.28);border-radius:50%;
+    background:rgba(13,13,18,.65);touch-action:none;box-shadow:inset 0 0 0 25px rgba(255,255,255,.035)}
+  #joystick::before{content:'✥';position:absolute;inset:0;display:grid;place-items:center;font-size:58px;color:rgba(255,255,255,.16)}
+  #joystick.enabled{display:block}
+  #joystick-knob{position:absolute;left:33px;top:33px;width:40px;height:40px;border-radius:50%;
+    background:rgba(16,185,129,.8);border:2px solid #86efc7;pointer-events:none}
+  #loc-name{overflow:hidden;text-overflow:ellipsis}
+  #help .touch-help{display:none}
+  body.overview #interact,body.overview #minimap-wrap,body.overview #help:not(.mobile-open){display:none}
+  @media (pointer:coarse){#help .touch-help{display:flex} #toolbar button{min-height:44px}}
   @media (max-width:900px){
-    #location{top:auto;bottom:14px;left:14px;transform:none;max-width:calc(100vw - 28px);font-size:12px}
-    #help{display:none}
-    #interact{bottom:66px}
-    #toolbar{max-width:200px}
+    #brand{top:calc(10px + env(safe-area-inset-top));left:12px;padding:8px;gap:7px}
+    #brand .t1{font-size:11px} #brand .t2{font-size:8px;letter-spacing:.5px}
+    #toolbar{top:calc(63px + env(safe-area-inset-top));left:12px;max-width:none;gap:5px}
+    #toolbar button{min-height:44px;padding:7px 10px} #toolbar kbd{display:none}
+    #minimap-wrap{top:calc(10px + env(safe-area-inset-top));right:10px;padding:5px}
+    #minimap{width:112px;height:auto} #minimap-wrap .head{font-size:8px;letter-spacing:.5px;margin-bottom:3px}
+    #coords{display:none}
+    #location{top:auto;bottom:calc(10px + env(safe-area-inset-bottom));left:12px;transform:none;
+      width:calc(100vw - 24px);max-width:none;font-size:11px;padding:10px;gap:6px}
+    #help{left:12px;top:calc(115px + env(safe-area-inset-top));bottom:auto;min-width:0;max-width:calc(100vw - 24px);z-index:9}
+    #help:not(.mobile-open){display:none} #help .touch-help{display:flex}
+    #interact{bottom:calc(214px + env(safe-area-inset-bottom));min-width:0;width:calc(100vw - 24px);padding:9px 12px}
+    #interact .name{font-size:13px} #interact .desc{font-size:11px;line-height:1.35}
+    #debug-badge{top:114px;font-size:8px;max-width:90vw}
+    #view-controls{right:12px;bottom:calc(60px + env(safe-area-inset-bottom))}
+  }
+  @media (max-height:520px) and (max-width:900px){
+    #interact{bottom:62px;width:min(340px,calc(100vw - 272px))}
+    #interact .desc{max-height:45px;overflow:hidden} #interact .bar{display:none}
+    #joystick{bottom:64px} #view-controls{bottom:56px}
+    #minimap-wrap{display:none}
   }
 </style>
 </head>
@@ -120,10 +160,18 @@
 </div>
 
 <div id="toolbar">
-  <button id="btn-hitbox" title="Mostrar hitboxes de colisão">Hitbox <kbd>H</kbd></button>
+  <button id="btn-joystick" title="Mostrar ou ocultar o controle de movimento" aria-controls="joystick" aria-pressed="false">Joystick</button>
   <button id="btn-run" title="Alternar corrida (mobile)">Correr <kbd>Shift</kbd></button>
   <button id="btn-help" title="Mostrar/ocultar ajuda">Ajuda</button>
 </div>
+
+<div id="view-controls" class="panel" role="group" aria-label="Controles da câmera">
+  <button id="btn-zoom-out" aria-label="Diminuir zoom">−</button>
+  <button id="btn-zoom-in" aria-label="Aumentar zoom">+</button>
+  <button id="btn-fit" title="Ver todo o campus (tecla 0)">Mapa inteiro</button>
+  <button id="btn-follow" title="Voltar ao estudante">Seguir aluno</button>
+</div>
+<div id="joystick" role="group" aria-label="Arraste para mover o aluno" aria-hidden="true"><span id="joystick-knob"></span></div>
 
 <div id="help" class="panel">
   <h4>Controles</h4>
@@ -133,12 +181,16 @@
   <div class="row"><span>Hitboxes (debug)</span><span><kbd>H</kbd> ou <kbd>C</kbd></span></div>
   <div class="row"><span>Zoom</span><span><kbd>+</kbd> <kbd>−</kbd></span></div>
   <div class="row"><span>Minimapa</span><span><kbd>M</kbd></span></div>
+  <div class="row"><span>Mapa inteiro</span><span><kbd>0</kbd> / botão</span></div>
+  <div class="row touch-help"><span>No celular</span><span>Toque / botão Joystick</span></div>
+  <div class="row touch-help"><span>Aproximar / afastar</span><span>Pinça com dois dedos</span></div>
 </div>
 
 <div id="interact" class="panel">
   <div class="tag">PRÓXIMO À ENTRADA</div>
   <div class="name" id="int-name">—</div>
   <div class="desc" id="int-desc">—</div>
+  <a id="enter-building" href="interiores/primeiro-andar.html" hidden>Entrar no prédio · E</a>
   <div class="bar"></div>
 </div>
 
@@ -154,6 +206,9 @@
   </div>
 </div>
 
+<script src="interiores/student.js?v=20261114-5"></script>
+<script src="interiores/places.js?v=20261116-2"></script>
+<script src="interiores/access.js?v=20261116-2"></script>
 <script>
 (() => {
 'use strict';
@@ -315,22 +370,38 @@ function forestSEBottom(x) { return roadTop(x) - 14; }
 // Vias internas do campus em calçamento (blocos intertravados / paralelepípedos, sem faixa de rua asfaltada)
 const ROADS = [
   { name: 'avenida', pts: [[1630, 435], [1630, 1865]], w: 84 },
-  { name: 'norte', pts: [[450, 435], [1990, 435]], w: 48 },
+  { name: 'norte', pts: [[374, 435], [1990, 435]], w: 48, light: true },
+  { name: 'lateral-oeste', pts: [[498, 1376], [498, 790], [548, 790], [548, 435]], w: 36, light: true },
   { name: 'nordeste', pts: [[1990, 435], [2170, 535], [2295, 596], [2435, 616], [2515, 675], [2542, 765], [2565, 905], [2605, 1032], [2715, 1060], [2935, 1060]], w: 48 }
 ];
-const DIRT_ROADS = [{ pts: [[455, 448], [385, 585], [365, 865]], w: 28 }];
+const WEST_SHIFT = -76;
+const DIRT_ROADS = [{ pts: [[379, 448], [309, 585], [289, 865]], w: 28 }];
+const COPA = { x: 1700, baseY: 846, w: 94, h: 106 };
+// Corredores de pedestres: os eixos acompanham calçadas, não as pistas de veículos.
+const COVERED_PATHS = [
+  { id: 'entrada-principal', pts: [[1574, 1740], [1574, 1038], [1305, 1038]], w: 24 },
+  { id: 'copa-acesso', pts: [[1686, 856], [1747, 856]], w: 24 },
+  { id: 'principal-pedagogico', pts: [[1364, 1038], [1364, 654], [1391, 654]], w: 24 },
+  { id: 'administrativo-entrada', pts: [[1574, 1360], [1185, 1360], [1185, 1330]], w: 24 },
+  { id: 'pedagogico-contorno', pts: [[1364, 704], [1574, 704], [1574, 475]], w: 24 },
+  { id: 'praca-pedagogico', pts: [[1574, 704], [1574, 1038]], w: 24 },
+  { id: 'biblioteca-entrada', pts: [[1463, 704], [1463, 690]], w: 24 },
+  { id: 'biblioteca-fundos', pts: [[1574, 475], [390, 475]], w: 24 },
+  { id: 'copa-refeitorio', pts: [[1686, 856], [1686, 475], [1978, 475], [2150, 570], [2280, 632], [2318, 638], [2318, 526], [2336, 526]], w: 24 }
+];
 
 // Calçadas e pátios pavimentados [x, y, w, h]
 const PAVED = [
-  [445, 462, 1545, 15],      // calçada sul do calçamento norte
+  [374, 462, 1616, 26],      // calçada sul do calçamento norte
   [1568, 462, 17, 1300],     // calçada oeste da via principal
-  [1675, 462, 15, 526],      // calçada leste da via principal (norte)
+  [1673, 462, 26, 1295],     // calçada leste contínua, inclusive ao lado das vagas
   [1675, 1382, 15, 375],     // calçada leste da via principal (sul)
-  [650, 560, 700, 440],      // pátio acadêmico central
-  [1330, 477, 238, 790],     // corredor e praça do pedagógico / biblioteca
-  [990, 980, 355, 295],      // pátio amplo entre prédio principal e administrativo
-  [518, 855, 495, 175],      // calçada e terraço do prédio principal (ala oeste)
-  [1690, 496, 118, 126],     // entorno da copa
+  [574, 480, 776, 620],      // laboratório deslocado para abrir a subida
+  [1330, 477, 238, 914],     // praça pavimentada até a frente do administrativo
+  [990, 1080, 355, 311],     // pátio e faixa livre diante do administrativo
+  [500, 1080, 518, 290],     // patamar e pátio inferior de acesso ao almoxarifado
+  [1690, 844, 65, 26],       // acesso terrestre à copa no canto superior do lago
+  [1686, 734, 14, 136],      // lateral oeste da copa
   [2300, 492, 56, 88],       // acesso frontal pela esquerda do refeitório
   [2342, 424, 152, 158],     // calçada de contorno do refeitório
   [2484, 502, 75, 38],       // passarela horizontal ligando o refeitório (à esquerda) ao pátio do ginásio
@@ -343,12 +414,28 @@ const GYM_PLAZA = [2555, 488, 225, 244];
 // Quadra de Areia na posição 2 (entre o Lago Principal e a curva do calçamento)
 const SAND_COURT = [2255, 658, 168, 90];
 // Subida (acesso) na posição 4, abrindo caminho amplo entre os Laboratórios e o Auditório
-const SUBIDA_RAMP = [890, 462, 72, 298];
+const SUBIDA_RAMP = [820, 462, 144, 284];
 // Canteiro em triângulo com só mato no meio, na frente do Bloco Pedagógico / Biblioteca
-const PEDAG_TRIANGLE = [[1398, 728], [1554, 728], [1492, 838]];
-const AUDI_LAWN = [976, 500, 168, 158];
-const PARK_MAIN = [800, 1310, 755, 430];
-const PARK_EAST = [1688, 990, 76, 390];
+const PEDAG_TRIANGLE = [[1398, 728], [1554, 728], [1476, 838]];
+const AUDI_PLAZA = [878, 488, 304, 430];
+const CLASSROOM_BLOCKS = [
+  // Planta quadrada de 128 × 128; os 20 px extras representam a fachada em perspectiva.
+  { id: 'salas-1', name: 'Bloco de Salas 1', x: 892, y: 746, w: 128, h: 148 },
+  { id: 'salas-2', name: 'Bloco de Salas 2', x: 1052, y: 746, w: 128, h: 148 }
+];
+const LOWER_COURT = [500, 1134, 434, 236];
+const RAISED_WALK = [800, 1122, 544, 64];
+const STORE_STAIRS = [846, 1202, 88, 32]; // escada à esquerda da ruazinha, sob o trecho de parede marcado
+const STORE_LANDING = [934, 1202, 22, 32];
+const RAISED_ENTRY = [1344, 1134, 52, 40];
+const PARK_ACCESS = [934, 1186, 102, 244];
+const LEFT_WALL_RETURN = [[782, 1134], [782, 1164], [786, 1178], [800, 1194]];
+const ADMIN_TREES = [[1469, 1144], [1469, 1264]];
+const FRONT_FENCES = [ [[0, 1800], [634, 1768], [1582, 1768]], [[1678, 1768], [1890, 1798]] ];
+const PARK_MAIN = [800, 1390, 755, 350];
+// Três fileiras centrais longitudinais; as fileiras norte e sul continuam horizontais.
+const PARK_ISLANDS = [990, 1180, 1370].map(x => [x, 1480, 20, 160]);
+const PARK_EAST = [1702, 990, 76, 390];
 
 // Lagos (definidos por forma polar orgânica — sem píer)
 function polarR(keys, ang) {
@@ -390,9 +477,9 @@ const LOCATIONS = [
   { id: 'guarita', name: 'Guarita / Pórtico de Entrada', desc: 'Controle de acesso principal do campus, ligado à Rodovia SC-135.',
     rects: [[1619, 1768, 22, 28]], doors: [[1630, 1797]], label: [1630, 1734] },
   { id: 'admin', name: 'Bloco Administrativo', desc: 'Direção-geral, secretaria acadêmica, protocolo e setores administrativos.',
-    rects: [[1040, 1128, 290, 94]], doors: [[1185, 1223]], label: [1185, 1118] },
+    rects: [[1040, 1228, 290, 94]], doors: [[1185, 1323]], label: [1185, 1218] },
   { id: 'principal', name: 'Prédio Principal • Salas de Aula', desc: 'O maior bloco do campus: salas de aula, coordenações e corredores acadêmicos.',
-    rects: [[1196, 535, 140, 330], [530, 860, 766, 120], [800, 980, 210, 42]], doors: [[1312, 866], [660, 981], [1160, 981], [905, 1023]], label: [890, 850] },
+    rects: [[1196, 535, 140, 430], [530, 960, 766, 120], [800, 1080, 210, 42]], doors: CampusAccess.entries.map(e=>e.outside.door), label: [890, 950] },
   { id: 'labs', name: 'Laboratórios', desc: 'Laboratórios de química, biologia, informática e agroindústria em volta de um pátio interno.',
     rects: [[700, 520, 175, 60], [655, 520, 62, 225], [717, 692, 138, 53]], doors: [[795, 581], [795, 746]], label: [765, 508] },
   { id: 'estufas', name: 'Estufas Agrícolas', desc: 'Cultivo protegido para as aulas práticas de Agronomia e Agropecuária.',
@@ -401,15 +488,29 @@ const LOCATIONS = [
     rects: [[234, 786, 62, 38], [188, 810, 64, 38], [142, 834, 64, 38], [94, 858, 66, 48]], doors: [[134, 908]], label: [203, 778] },
   { id: 'auditorio', name: 'Auditório', desc: 'Palestras, formaturas, mostras científicas e eventos culturais.',
     rects: [[1028, 510, 64, 132], [992, 528, 136, 62], [1010, 590, 100, 32]], doors: [[1060, 643]], label: [1060, 496] },
-  { id: 'biblioteca', name: 'Biblioteca e Bloco Pedagógico', desc: 'Acervo bibliográfico, salas de estudo em grupo e setor pedagógico.',
+  { id: 'biblioteca', name: 'Biblioteca', desc: 'Acervo bibliográfico e salas de estudo. A entrada do Bloco Pedagógico fica na lateral oeste.',
     rects: [[1398, 512, 130, 170], [1528, 520, 30, 154]], doors: [[1463, 683]], label: [1478, 500] },
   { id: 'copa', name: 'Copa / Cantina', desc: 'Cafés, lanches e um cantinho de convivência à beira do lago.',
-    rects: [[1705, 514, 90, 92]], doors: [[1750, 607]], label: [1750, 504] },
+    rects: [[COPA.x + 2, COPA.baseY - 92, 90, 92]], doors: [[COPA.x + 47, COPA.baseY + 1]], label: [COPA.x + 47, COPA.baseY - 102] },
   { id: 'refeitorio', name: 'Refeitório', desc: 'Refeições diárias para estudantes e servidores, incluindo alunos do internato.',
     rects: [[2350, 434, 136, 140]], doors: [[2336, 526]], label: [2418, 418] },
   { id: 'ginasio', name: 'Ginásio Poliesportivo', desc: 'Quadra coberta, vestiários e espaço para Educação Física, jogos e eventos.',
-    rects: [[2730, 740, 240, 285], [2640, 817, 90, 208]], doors: [[2850, 1026], [2685, 1026]], label: [2815, 726] }
+    rects: [[2730, 740, 240, 285], [2640, 817, 90, 208]], doors: [[2850, 1026], [2685, 1026]], label: [2815, 726] },
+  { id: 'almoxarifado', name: 'Almoxarifado', desc: 'Acesso de serviço no nível inferior da ala oeste do Prédio Principal.',
+    rects: [[542, 1108, 240, 26]], doors: [[660, 1135]], label: [660, 1098] },
+  { id: 'pedagogico', name: 'Entrada do Pedagógico', desc: 'Entrada lateral do Bloco Pedagógico, ligada ao Prédio Principal pelo corredor coberto.',
+    rects: [], doors: [[1391, 654]], label: [1478, 647] },
+  ...CLASSROOM_BLOCKS.map(b => ({ id: b.id, name: b.name,
+    desc: 'Bloco de salas de aula no pátio do auditório, representado com a obra concluída.',
+    rects: [[b.x, b.y + 12, b.w, b.h - 12]], doors: [[b.x + b.w / 2, b.y + b.h + 1]], label: [b.x + b.w / 2, b.y - 8] }))
 ];
+
+// Mantém fachadas, portas, rótulos e colisões alinhados ao deslocar o conjunto oeste.
+for (const loc of LOCATIONS.filter(l => ['labs', 'estufas', 'barracao'].includes(l.id))) {
+  for (const r of loc.rects) r[0] += WEST_SHIFT;
+  for (const d of loc.doors) d[0] += WEST_SHIFT;
+  loc.label[0] += WEST_SHIFT;
+}
 
 // Áreas genéricas (para o indicador quando não há prédio por perto)
 const ZONES = [
@@ -418,9 +519,12 @@ const ZONES = [
   { name: 'Pátio do Ginásio', r: GYM_PLAZA },
   { name: 'Quadra de Areia', r: SAND_COURT },
   { name: 'Subida dos Laboratórios', r: SUBIDA_RAMP },
+  { name: 'Pátio Inferior / Almoxarifado', r: LOWER_COURT },
+  { name: 'Acesso ao Estacionamento', r: PARK_ACCESS },
+  { name: 'Pátio do Auditório e Salas', r: AUDI_PLAZA },
   { name: 'Calçamento Principal', r: [1568, 460, 122, 1300] },
   { name: 'Calçamento Norte', r: [445, 410, 1615, 68] },
-  { name: 'Pátio Acadêmico', r: [650, 560, 918, 520] }
+  { name: 'Pátio Acadêmico', r: [650, 480, 918, 600] }
 ];
 
 // Listas globais preenchidas durante a construção do mundo
@@ -790,18 +894,6 @@ function makeBench() {
   addOuterOutline(g, 18, 10, [30, 20, 12]);
   return c;
 }
-function makeTotem() {
-  const [c, g] = makeCanvas(30, 42);
-  rect(g, 4, 30, 3, 8, '#7a8188'); rect(g, 23, 30, 3, 8, '#7a8188');
-  rect(g, 1, 2, 28, 28, '#0a6640'); rect(g, 2, 3, 26, 26, '#0f8a57'); rect(g, 2, 3, 26, 1, '#16b06f');
-  drawIfcLogo(g, 5, 7, 2);
-  drawPixelText(g, 'IFC', 15, 8, '#ffffff');
-  rect(g, 15, 15, 11, 1, '#ffffff');
-  drawPixelText(g, 'SC', 15, 19, '#d1fae5');
-  rect(g, 0, 37, 30, 4, '#b9bec3'); rect(g, 0, 37, 30, 1, '#dadfe3');
-  addOuterOutline(g, 30, 42, [12, 30, 22]);
-  return c;
-}
 function makePillar() {
   const [c, g] = makeCanvas(8, 30);
   rect(g, 2, 0, 4, 28, '#e7ecef'); rect(g, 5, 0, 1, 28, '#aab3ba'); rect(g, 2, 0, 1, 28, '#ffffff');
@@ -828,59 +920,8 @@ function makeCanopy(w, h) {
 }
 
 // O estudante (16x24) — 4 direções x 4 quadros
-function drawStudent(g, dir, f) {
-  const Px = (x, y, w, h, c) => { g.fillStyle = c; g.fillRect(x, y, w, h); };
-  const SK = '#f2c28c', SKD = '#d79a62', HA = '#3a2618', HAL = '#6b4529', SH = '#10b981', SHD = '#0a8a5f', SHL = '#6ee7b7',
-    PA = '#2c4472', PAD = '#1d2f55', SO = '#1d1d24', SOH = '#3a3a46', BG = '#8b5cf6', BGD = '#6d3fe0', BGL = '#b69cff', EYE = '#1a1a22', WH = '#f8fafc';
-  const step = f === 1 ? 1 : (f === 3 ? -1 : 0);
-  if (dir === 'down' || dir === 'up') {
-    const hL = step === 1 ? 4 : (step === -1 ? 2 : 3), hR = step === -1 ? 4 : (step === 1 ? 2 : 3);
-    Px(4, 17, 8, 1, PA);
-    Px(4, 18, 3, hL, PA); Px(6, 18, 1, hL, PAD); Px(4, 18 + hL, 3, 2, SO); Px(4, 18 + hL, 1, 1, SOH);
-    Px(9, 18, 3, hR, PA); Px(9, 18, 1, hR, PAD); Px(9, 18 + hR, 3, 2, SO); Px(9, 18 + hR, 1, 1, SOH);
-    Px(4, 11, 8, 6, SH); Px(4, 15, 8, 2, SHD);
-    const aL = step === 1 ? 2 : (step === -1 ? 4 : 3), aR = step === -1 ? 2 : (step === 1 ? 4 : 3);
-    Px(2, 11, 2, 2, SH); Px(2, 13, 2, aL, SK); Px(2, 12 + aL, 2, 1, SKD);
-    Px(12, 11, 2, 2, SH); Px(12, 13, 2, aR, SK); Px(12, 12 + aR, 2, 1, SKD);
-    if (dir === 'down') {
-      Px(6, 11, 4, 1, WH); Px(7, 12, 2, 1, SHL);
-      Px(5, 11, 1, 5, BG); Px(10, 11, 1, 5, BG);
-      Px(4, 2, 8, 8, SK); Px(4, 9, 8, 1, SKD);
-      Px(4, 1, 8, 4, HA); Px(3, 2, 1, 6, HA); Px(12, 2, 1, 6, HA); Px(5, 5, 2, 1, HA); Px(9, 5, 2, 1, HA); Px(6, 1, 3, 1, HAL);
-      Px(6, 7, 1, 2, EYE); Px(9, 7, 1, 2, EYE); Px(7, 9, 2, 1, '#c0704a');
-      Px(7, 10, 2, 1, SKD);
-    } else {
-      Px(5, 11, 6, 6, BG); Px(5, 11, 6, 1, BGL); Px(5, 16, 6, 1, BGD); Px(6, 13, 4, 2, BGD);
-      Px(4, 1, 8, 9, HA); Px(6, 1, 3, 1, HAL); Px(5, 3, 1, 2, HAL);
-      Px(3, 5, 1, 2, SK); Px(12, 5, 1, 2, SK); Px(6, 10, 4, 1, SKD);
-    }
-  } else { // 'right' (a esquerda é o espelho)
-    if (step === 0) { Px(6, 17, 4, 1, PA); Px(6, 18, 4, 3, PA); Px(6, 18, 1, 3, PAD); Px(6, 21, 5, 2, SO); Px(6, 21, 1, 1, SOH); }
-    else {
-      const a = step === 1 ? PA : PAD, b = step === 1 ? PAD : PA;
-      Px(6, 17, 4, 1, PA);
-      Px(4, 18, 3, 3, b); Px(3, 21, 3, 2, SO);
-      Px(8, 18, 3, 3, a); Px(9, 21, 3, 2, SO); Px(9, 21, 1, 1, SOH);
-    }
-    Px(5, 11, 6, 6, SH); Px(5, 15, 6, 2, SHD);
-    Px(3, 11, 3, 6, BG); Px(3, 11, 3, 1, BGL); Px(3, 16, 3, 1, BGD);
-    if (step === 0) { Px(7, 11, 2, 3, SHD); Px(7, 14, 2, 2, SK); }
-    else if (step === 1) { Px(8, 11, 2, 2, SHD); Px(9, 13, 2, 2, SK); }
-    else { Px(6, 11, 2, 2, SHD); Px(5, 13, 2, 2, SK); }
-    Px(5, 2, 7, 8, SK); Px(5, 9, 7, 1, SKD);
-    Px(5, 1, 7, 4, HA); Px(5, 5, 3, 3, HA); Px(11, 4, 1, 1, HA); Px(7, 1, 3, 1, HAL);
-    Px(10, 6, 1, 2, EYE); Px(12, 7, 1, 1, SK); Px(8, 6, 1, 2, SKD); Px(6, 10, 3, 1, SKD);
-  }
-}
-function buildPlayerFrames() {
-  const F = {};
-  for (const d of ['down', 'up', 'right']) {
-    F[d] = [];
-    for (let f = 0; f < 4; f++) { const [c, g] = makeCanvas(16, 24); drawStudent(g, d, f); addOuterOutline(g, 16, 24, [20, 20, 28]); F[d].push(c); }
-  }
-  F.left = F.right.map(src => { const [m, g] = makeCanvas(16, 24); g.translate(16, 0); g.scale(-1, 1); g.drawImage(src, 0, 0); return m; });
-  return F;
-}
+const buildPlayerFrames = CampusStudent.buildFrames;
+
 
 
 /* =========================================================================
@@ -1117,10 +1158,11 @@ function drawTerrain() {
     strokePolyline(bgx, dr.pts, dr.w + 4, '#7a5232');
     strokePolyline(bgx, dr.pts, dr.w, PAT.dirt);
   }
-  strokePolyline(bgx, [[365, 835], [260, 855], [170, 915]], 36, PAT.gravel);
-  ellipseFill(bgx, 205, 880, 132, 68, PAT.gravel);
+  strokePolyline(bgx, [[289, 835], [184, 855], [94, 915]], 36, PAT.gravel);
+  ellipseFill(bgx, 129, 880, 125, 68, PAT.gravel);
 
   // Canteiros agrícolas ao norte das estufas
+  bgx.save(); bgx.translate(WEST_SHIFT, 0);
   drawCurbBox(bgx, 404, 540, 192, 46, PAT.soil, '#8c6b4f', '#523a26');
   for (let ry = 547; ry < 581; ry += 7) {
     rect(bgx, 410, ry, 180, 3, '#3c2718');
@@ -1129,9 +1171,14 @@ function drawTerrain() {
       rect(bgx, rx + 1, ry - 2, 1, 1, '#7ad168');
     }
   }
+  bgx.restore();
 
   // 4) Pátios pavimentados, calçadas e passarelas
   for (const r of PAVED) drawCurbBox(bgx, r[0], r[1], r[2], r[3], PAT.concrete);
+  for (const path of COVERED_PATHS) {
+    strokePolyline(bgx, path.pts, path.w + 6, '#acb3b5');
+    strokePolyline(bgx, path.pts, path.w + 2, PAT.concrete);
+  }
 
   // Grande Pátio de Concreto abaixo do Lago Menor e à direita do Refeitório (fiel à foto aérea!)
   drawCurbBox(bgx, GYM_PLAZA[0], GYM_PLAZA[1], GYM_PLAZA[2], GYM_PLAZA[3], PAT.concrete);
@@ -1141,28 +1188,72 @@ function drawTerrain() {
   rect(bgx, 2568, 728, 165, 10, PAT.concrete);
 
   // SUBIDA (Posição 4): Caminho amplo entre os Laboratórios e o Auditório na mesma cor de chão (PAT.concrete)
-  drawCurbBox(bgx, SUBIDA_RAMP[0], 462, SUBIDA_RAMP[2], 104, PAT.concrete);
-  rect(bgx, SUBIDA_RAMP[0], 462, SUBIDA_RAMP[2], 16, PAT.concrete);
-  rect(bgx, SUBIDA_RAMP[0], 556, SUBIDA_RAMP[2], 14, PAT.concrete);
+  rect(bgx, ...SUBIDA_RAMP, PAT.concrete);
 
-  // Caminho diagonal na grama em frente à ala oeste do Prédio Principal até o Estacionamento (fiel à foto!)
-  strokePolyline(bgx, [[630, 1028], [735, 1185], [818, 1312]], 22, '#9fa4aa');
-  strokePolyline(bgx, [[630, 1028], [735, 1185], [818, 1312]], 18, PAT.concrete);
+  // Pátio inferior pavimentado; o desnível substitui o antigo gramado da ala oeste.
+  drawCurbBox(bgx, ...LOWER_COURT, PAT.concrete, '#d2d6da', '#737a7e');
+  rect(bgx, 518, 1080, 282, 32, PAT.concrete);
+  rect(bgx, 518, 1112, 282, 22, '#12885b');
+  rect(bgx, 518, 1130, 282, 4, '#086141');
+  addSolid(518, 1112, 24, 22, 'muro-desnivel');
+  addSolid(782, 1112, 18, 22, 'muro-desnivel');
+  // Entrada pela direita, patamar contínuo até a porta e descida ao nível do almoxarifado.
+  rect(bgx, ...RAISED_WALK, PAT.concrete);
+  rect(bgx, ...RAISED_ENTRY, PAT.concrete);
+  // Abertura de subida pela direita, sem fechar o acesso com guarda-corpo.
+  for (let x = 1348; x < 1396; x += 10) rect(bgx, x, 1135, 1, 38, '#bec7c5');
+  rect(bgx, ...PARK_ACCESS, PAT.concrete);
+  const retainingWalls = [[800, 1186, 134, 16], [1036, 1186, 308, 16],
+    [930, 1234, 4, 156], [1036, 1202, 4, 188]];
+  for (const r of retainingWalls) {
+    rect(bgx, ...r, '#12885b');
+    rect(bgx, r[0], r[1] + r[3] - 3, r[2], 3, '#086141');
+    addSolid(...r, 'muro-patamar');
+  }
+  // Retorno da parede pela esquerda, acompanhando a curva desenhada até o almoxarifado.
+  strokePolyline(bgx, LEFT_WALL_RETURN.map(([x, y]) => [x, y + 4]), 12, '#086141');
+  strokePolyline(bgx, LEFT_WALL_RETURN, 10, '#12885b');
+  strokePolyline(bgx, LEFT_WALL_RETURN.map(([x, y]) => [x, y - 6]), 2, '#dce7e1');
+  for (let i = 1; i < LEFT_WALL_RETURN.length; i++) {
+    const a = LEFT_WALL_RETURN[i - 1], b = LEFT_WALL_RETURN[i];
+    const steps = Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4);
+    for (let k = 0; k <= steps; k++) {
+      addSolid(a[0] + (b[0] - a[0]) * k / steps - 4,
+        a[1] + (b[1] - a[1]) * k / steps - 4, 8, 8, 'muro-patamar');
+    }
+  }
+  rect(bgx, ...STORE_LANDING, PAT.concrete);
+  rect(bgx, ...STORE_STAIRS, '#c8ced0');
+  // Degraus horizontais à esquerda da passagem; o acesso central fica completamente livre.
+  for (let x = STORE_STAIRS[0]; x < STORE_STAIRS[0] + STORE_STAIRS[2]; x += 6) {
+    rect(bgx, x, STORE_STAIRS[1], 1, STORE_STAIRS[3], '#f4f6f6');
+    rect(bgx, x + 5, STORE_STAIRS[1], 1, STORE_STAIRS[3], '#929e9d');
+  }
+  // Guarda-corpo interrompido apenas na escada e no acesso lateral.
+  for (const [x, w] of [[800, 134], [1036, 308]]) {
+    for (let px = x; px < x + w; px += 22) rect(bgx, px, 1174, 2, 14, '#eef4f1');
+    rect(bgx, x, 1174, w, 2, '#eef4f1');
+    rect(bgx, x, 1180, w, 2, '#d2ded7');
+  }
+  for (const y of [STORE_STAIRS[1], STORE_STAIRS[1] + STORE_STAIRS[3]]) {
+    rect(bgx, STORE_STAIRS[0], y, STORE_STAIRS[2], 2, '#eef4f1');
+    addSolid(STORE_STAIRS[0], y, STORE_STAIRS[2], 2, 'corrimao-escada');
+  }
 
-  // Gramado em volta do Auditório + passarela limpa até a porta
-  drawCurbBox(bgx, AUDI_LAWN[0], AUDI_LAWN[1], AUDI_LAWN[2], AUDI_LAWN[3], PAT.grass, '#d2d6da', '#8e9399');
+  // Pátio do Auditório + passarela limpa até a porta, sem os antigos canteiros.
+  rect(bgx, ...AUDI_PLAZA, PAT.concrete);
   rect(bgx, 1046, 636, 28, 28, PAT.concrete);
-
-  // Pequeno canteiro baixo de grama ao sul do Auditório (sem árvores altas, fiel à foto)
-  drawCurbBox(bgx, 998, 678, 124, 34, PAT.mato, '#d2d6da', '#8e9399');
 
   // TRIÂNGULO COM MATO na frente do Bloco Pedagógico / Biblioteca (sem árvores!)
   drawMatoTriangle(bgx, PEDAG_TRIANGLE);
 
-  // Canteiros gramados na fachada do Prédio Principal (ala oeste) e em frente ao Bloco Administrativo
-  drawCurbBox(bgx, 542, 994, 240, 22, PAT.grass, '#d2d6da', '#8e9399');
-  drawCurbBox(bgx, 1046, 1236, 118, 24, PAT.grass, '#d2d6da', '#8e9399');
-  drawCurbBox(bgx, 1206, 1236, 118, 24, PAT.grass, '#d2d6da', '#8e9399');
+  // Faixa verde estreita da frente do administrativo até a calçada da entrada.
+  drawCurbBox(bgx, 1040, 1378, 528, 6, PAT.grass, '#d2d6da', '#8e9399');
+  for (const [x, y] of ADMIN_TREES) {
+    disc(bgx, x, y, 23, '#9da8a4');
+    disc(bgx, x, y - 1, 21, '#e0e5e2');
+    disc(bgx, x, y - 1, 18, PAT.grass);
+  }
 
   // 5) Quadra de Areia única na Posição 2 (entre o Lago Principal e a curva do calçamento, longe de baixo do Ginásio!)
   strokePolyline(bgx, [[SAND_COURT[0] + SAND_COURT[2], SAND_COURT[1] + 45], [2512, SAND_COURT[1] + 45]], 16, PAT.concrete);
@@ -1181,23 +1272,27 @@ function drawTerrain() {
   drawCurbBox(bgx, 636, 1460, 164, 280, PAT.pavers, '#d3cfc9', '#7b7670');
   drawCurbBox(bgx, PARK_MAIN[0], PARK_MAIN[1], PARK_MAIN[2], PARK_MAIN[3], PAT.calcamento, '#dbd7d0', '#78736d');
   drawCurbBox(bgx, PARK_EAST[0], PARK_EAST[1], PARK_EAST[2], PARK_EAST[3], PAT.calcamento, '#dbd7d0', '#78736d');
+  // Boca da ruazinha aberta no estacionamento, sem vagas atravessando sua saída.
+  rect(bgx, ...PARK_ACCESS, PAT.concrete);
 
-  // Ilhas arborizadas no centro do Estacionamento Principal
-  drawCurbBox(bgx, 965, 1506, 200, 28, PAT.grass, '#dbd7d0', '#78736d');
-  drawCurbBox(bgx, 1215, 1506, 200, 28, PAT.grass, '#dbd7d0', '#78736d');
+  // Três ilhas arborizadas verticais no centro do Estacionamento Principal.
+  for (const island of PARK_ISLANDS) drawCurbBox(bgx, ...island, PAT.grass, '#dbd7d0', '#78736d');
 
-  // Demarcação das vagas de estacionamento
+  // Demarcação das vagas de estacionamento: fileiras horizontais nas duas extremidades.
   bgx.fillStyle = '#e5e2dc';
-  for (let vx = 890; vx <= 1466; vx += 24) bgx.fillRect(vx, 1314, 2, 32);
-  for (const ix of [[970, 1162], [1220, 1412]]) {
-    for (let vx = ix[0]; vx <= ix[1]; vx += 24) {
-      bgx.fillRect(vx, 1470, 2, 32);
-      bgx.fillRect(vx, 1538, 2, 32);
+  for (let vx = 890; vx <= 1466; vx += 24) {
+    if (vx >= PARK_ACCESS[0] && vx <= PARK_ACCESS[0] + PARK_ACCESS[2]) continue;
+    bgx.fillRect(vx, 1394, 2, 32);
+  }
+  for (const [ix, iy, iw, ih] of PARK_ISLANDS) {
+    for (let vy = iy; vy <= iy + ih; vy += 20) {
+      bgx.fillRect(ix - 36, vy, 32, 2);
+      bgx.fillRect(ix + iw + 4, vy, 32, 2);
     }
   }
   for (let vx = 890; vx <= 1466; vx += 24) bgx.fillRect(vx, 1702, 2, 34);
   for (let vy = 1480; vy <= 1700; vy += 22) bgx.fillRect(642, vy, 30, 2);
-  for (let vy = 1008; vy <= 1344; vy += 24) bgx.fillRect(1692, vy, 32, 2);
+  for (let vy = 1008; vy <= 1344; vy += 24) bgx.fillRect(1706, vy, 32, 2);
 
   // 7) Vias Internas em Calçamento (paralelepípedos / paver intertravado com meio-fio, sarjeta e sem faixa tracejada de rua!)
   for (const rd of ROADS) {
@@ -1206,12 +1301,12 @@ function drawTerrain() {
     strokePolyline(bgx, rd.pts, rd.w - 2, '#80786f');
   }
   for (const rd of ROADS) {
-    strokePolyline(bgx, rd.pts, rd.w - 4, PAT.calcamento);
+    strokePolyline(bgx, rd.pts, rd.w - 4, rd.light ? PAT.concrete : PAT.calcamento);
   }
   // Conexões limpas do calçamento com os estacionamentos
-  rect(bgx, 1552, 1340, 40, 62, PAT.calcamento);
+  rect(bgx, 1552, 1394, 40, 62, PAT.calcamento);
   rect(bgx, 1552, 1630, 40, 66, PAT.calcamento);
-  rect(bgx, 1668, 998, 24, 374, PAT.calcamento);
+  rect(bgx, 1699, 998, 7, 374, PAT.calcamento);
 
   // Canteiro central arborizado da Via Principal + ilha da Guarita
   drawCurbBox(bgx, 1625, 495, 10, 825, PAT.grass, '#dedad3', '#75706a');
@@ -1236,7 +1331,7 @@ function drawTerrain() {
     rect(bgx, lx - 3, y, rx - lx + 6, 1, '#d6dade');
     rect(bgx, lx, y, rx - lx, 1, y < 1824 ? PAT.calcamento : PAT.asphalt);
   }
-  // Ilha triangular gramada no trevo (onde ficam o totem IFC e os mastros)
+  // Ilha triangular gramada no trevo (mastros; sem a placa que não existe no local)
   for (let y = 1818; y <= 1902; y++) {
     const t = (y - 1818) / 84;
     const xL = Math.round(1646 - t * 30), xR = Math.round(1660 + t * 62);
@@ -1266,12 +1361,19 @@ function drawTerrain() {
   drawPixelText(bgx, 'SC-135', 2420, Math.round(roadTop(2420)) + 52, '#cbd5e1', 2);
   drawPixelText(bgx, 'PARE', 1596, 1818, '#f8fafc', 1);
 
-  // Muro/gradil institucional ao sul do estacionamento (com abertura no pórtico)
-  for (let x = 634; x <= 1582; x += 2) {
-    const fy = Math.min(1768, Math.round(roadTop(x)) - 16);
-    rect(bgx, x, fy, 2, 4, '#d1d5db');
-    rect(bgx, x, fy - 4, 2, 4, '#0f8a57');
-    if (x % 18 === 0) rect(bgx, x, fy - 7, 3, 11, '#f1f5f9');
+  // Gradil contínuo até o limite oeste e até a mata à direita; portaria aberta.
+  for (const pts of FRONT_FENCES) {
+    strokePolyline(bgx, pts, 5, '#d1d5db');
+    const rail = pts.map(([x, y]) => [x, y - 5]);
+    strokePolyline(bgx, rail, 3, '#0f8a57');
+    for (let i = 1; i < pts.length; i++) {
+      const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+      for (let x = x0; x <= x1; x += 6) {
+        const y = Math.round(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+        rect(bgx, x, y - 12, 1, 12, '#b5c8bf');
+        if (Math.round(x - x0) % 24 === 0) rect(bgx, x, y - 15, 3, 18, '#edf1ee');
+      }
+    }
   }
 }
 
@@ -1339,11 +1441,7 @@ function buildStructures() {
   bgx.save(); bgx.globalAlpha = 0.22; bgx.drawImage(silhouette(canopy), 1585, 1762); bgx.restore();
   OVERLAYS.push({ c: canopy, x: 1579, y: 1750 });
 
-  // Totem Institucional IFC + Mastros de Bandeiras na ilha de entrada
-  const totem = makeTotem();
-  SPRITES.push({ c: totem, x: 1666, y: 1818, sortY: 1859 });
-  addSolid(1668, 1852, 26, 7, 'totem');
-
+  // Mastros de Bandeiras na ilha de entrada; placa institucional removida.
   const flags = [['#16a34a', '#facc15'], ['#dc2626', '#ffffff'], ['#10b981', '#ffffff']];
   flags.forEach((cols, idx) => {
     const [fc, fg] = makeCanvas(16, 36);
@@ -1414,30 +1512,30 @@ function buildStructures() {
       acUnit(g, 44, 20); acUnit(g, 198, 20);
     }
   });
-  placeStructure(admin, 1040, 1222, LOCATIONS[1].rects, 16, 'admin');
+  placeStructure(admin, 1040, 1322, LOCATIONS[1].rects, 16, 'admin');
 
   // -----------------------------------------------------------------------
   // 4) PRÉDIO PRINCIPAL / SALAS DE AULA (Posição 3: grande bloco em L espaçado fielmente à foto)
   // -----------------------------------------------------------------------
-  const mainW = 806, mainH = 466; // cobre x: 530..1336, y: 514..980
+  const mainW = 806, mainH = 566; // cobre x: 530..1336, y: 514..1080; pátio ampliado
   const mainBldg = renderBuilding({
     w: mainW, h: mainH, wallH: 28,
     shape: (x, y) => {
       // Ala vertical norte: x in [666..806] -> mundo 1196..1336, canto sudeste curvo
-      const inVert = x >= 666 && x < 806 && y >= 0 && y < 324 &&
-        !(x > 768 && y > 286 && Math.hypot(x - 768, y - 286) > 38);
-      // Ala horizontal oeste: x in [0..768] -> mundo 530..1298, telhado y in [318..438] -> mundo 832..952
-      const inHoriz = x >= 0 && x < 768 && y >= 318 && y < 438;
+      const inVert = x >= 666 && x < 806 && y >= 0 && y < 424 &&
+        !(x > 768 && y > 386 && Math.hypot(x - 768, y - 386) > 38);
+      // Ala horizontal oeste: x in [0..768] -> mundo 530..1298, telhado y in [418..538] -> mundo 932..1052
+      const inHoriz = x >= 0 && x < 768 && y >= 418 && y < 538;
       return inVert || inHoriz;
     },
     roof: (x, y, ed) => {
-      const westWing = x < 340 && y >= 318;
+      const westWing = x < 340 && y >= 418;
       const base = westWing ? C('#bfc6ce') : C('#757c86');
       if (ed <= 1) return westWing ? C('#eef2f6') : C('#b5bcc6');
       if (ed === 2) return westWing ? C('#9aa3ad') : C('#585e67');
       if (ed === 3) return shade(base, 0.82);
-      if (y >= 318 && Math.abs(y - 378) <= 1 && x < 755) return shade(base, 1.16);
-      if (x >= 666 && y < 318 && Math.abs(x - 736) <= 1) return shade(base, 1.15);
+      if (y >= 418 && Math.abs(y - 478) <= 1 && x < 755) return shade(base, 1.16);
+      if (x >= 666 && y < 418 && Math.abs(x - 736) <= 1) return shade(base, 1.15);
       if ((westWing ? (x % 10 === 0) : (x % 16 === 0))) return shade(base, 0.92);
       return hash2(x, y) < 0.08 ? shade(base, 0.95) : base;
     },
@@ -1453,20 +1551,26 @@ function buildStructures() {
       }
       return makeWall({
         trimH: 4, stripe: 22,
-        windows: { offset: 6, period: 14, width: 9, rows: [[6, 11], [15, 20]] },
-        skip: [[121, 139], [621, 639]],
-        doors: [{ x: 123, w: 14, h: 12 }, { x: 623, w: 14, h: 12 }]
+        windows: { offset: 6, period: 14, width: 9, rows: [[6, 11], [15, 20]] }
       })(x, k, len, info);
     },
     decorate: (g) => {
-      skylight(g, 74, 366, 46, 10); skylight(g, 205, 366, 46, 10);
-      acUnit(g, 702, 70); acUnit(g, 722, 165); acUnit(g, 455, 350); acUnit(g, 560, 350);
-      drawIfcLogo(g, 350, 442, 2);
+      skylight(g, 74, 466, 46, 10); skylight(g, 205, 466, 46, 10);
+      acUnit(g, 702, 70); acUnit(g, 722, 165); acUnit(g, 455, 450); acUnit(g, 560, 450);
+      drawIfcLogo(g, 350, 542, 2);
     }
   });
-  placeStructure(mainBldg, 530, 980, [LOCATIONS[2].rects[0], LOCATIONS[2].rects[1]], 20, 'principal');
+  placeStructure(mainBldg, 530, 1080, [LOCATIONS[2].rects[0], LOCATIONS[2].rects[1]], 20, 'principal');
+  // Soleiras das entradas dos fundos, saída superior B e saída de emergência oeste.
+  for(const [x,y,w,h] of [[893,925,24,7],[1254,507,24,7],[523,1008,7,24],[1190,898,7,24]]){
+    rect(bgx,x,y,w,h,'#0a6640');rect(bgx,x+2,y+2,w-4,h-4,'#a4d9c6');
+  }
+  // Porta lateral indicada pelo usuário, acima da fachada frontal e independente do patamar.
+  rect(bgx, 1292, 1023, 6, 24, '#0a6640');
+  rect(bgx, 1294, 1026, 4, 18, '#79a6cc');
+  rect(bgx, 1298, 1031, 9, 14, PAT.concrete);
 
-  // Parte B: Terraço frontal curvo com parede verde institucional ([800, 980, 210, 42])
+  // Parte B: Terraço frontal curvo com parede verde institucional ([800, 1080, 210, 42])
   const terrace = renderBuilding({
     w: 210, h: 48, wallH: 14,
     shape: (x, y) => {
@@ -1477,7 +1581,42 @@ function buildStructures() {
     roof: flatRoof(C('#c9d0d6'), C('#9ba3ab'), C('#e7ecf0'), C('#b1bac2')),
     wall: makeWall({ base: P.green, trim: P.greenD, trimD: C('#064e32'), trimH: 3, doors: [{ x: 97, w: 16, h: 10 }] })
   });
-  placeStructure(terrace, 800, 1022, [LOCATIONS[2].rects[2]], 4, 'principal-base');
+  placeStructure(terrace, 800, 1122, [LOCATIONS[2].rects[2]], 4, 'principal-base');
+
+  // Almoxarifado no nível inferior: fachada de serviço e portão metálico, sem porta de vidro.
+  const [storeC, storeG] = makeCanvas(240, 30);
+  rect(storeG, 0, 0, 240, 4, '#dce3df');
+  rect(storeG, 0, 4, 240, 26, '#137e54');
+  rect(storeG, 96, 6, 44, 24, '#46534e');
+  rect(storeG, 98, 7, 40, 22, '#c5ceca');
+  for (let y = 9; y < 28; y += 3) rect(storeG, 99, y, 38, 1, '#909c96');
+  rect(storeG, 118, 7, 1, 22, '#697770');
+  rect(storeG, 121, 20, 3, 1, '#39453f');
+  const storeLoc = LOCATIONS.find(l => l.id === 'almoxarifado');
+  placeStructure(storeC, 542, 1134, storeLoc.rects, 4, storeLoc.id);
+  // Guarda-corpo branco do patamar elevado, acima do acesso inferior.
+  for (let x = 520; x < 800; x += 20) rect(bgx, x, 1097, 2, 12, '#f1f5f3');
+  rect(bgx, 518, 1097, 282, 2, '#f1f5f3');
+  rect(bgx, 518, 1103, 282, 2, '#cddbd3');
+
+  // Dois blocos quadrados lado a lado, concluídos como solicitado.
+  for (const b of CLASSROOM_BLOCKS) {
+    const doorX = b.w / 2 - 7;
+    const block = renderBuilding({
+      w: b.w, h: b.h, wallH: 20,
+      shape: (x, y) => y >= 0 && y < b.h - 20,
+      roof: flatRoof(C('#e1e6e8'), C('#b0bac0'), C('#ffffff'), C('#cbd3d7')),
+      wall: makeWall({ trimH: 3,
+        windows: { offset: 10, period: 24, width: 15, rows: [[6, 14]] },
+        skip: [[doorX - 5, doorX + 19]], doors: [{ x: doorX, w: 14, h: 15 }]
+      }),
+      decorate: g => {
+        acUnit(g, 18, 12); acUnit(g, b.w - 32, 12);
+        drawIfcLogo(g, doorX - 17, b.h - 17, 2);
+      }
+    });
+    placeStructure(block, b.x, b.y + b.h, LOCATIONS.find(l => l.id === b.id).rects, 12, b.id);
+  }
 
   // -----------------------------------------------------------------------
   // 5) LABORATÓRIOS (Noroeste, blocos brancos em "U" a oeste da Subida)
@@ -1507,7 +1646,7 @@ function buildStructures() {
     }),
     decorate: (g) => { vent(g, 92, 20); vent(g, 148, 20); acUnit(g, 24, 104); acUnit(g, 112, 188); }
   });
-  placeStructure(labs, 655, 745, LOCATIONS[3].rects, 16, 'labs');
+  placeStructure(labs, 655 + WEST_SHIFT, 745, LOCATIONS[3].rects, 16, 'labs');
 
   // -----------------------------------------------------------------------
   // 6) DUAS ESTUFAS AGRÍCOLAS PARALELAS (aspecto translúcido esverdeado)
@@ -1536,8 +1675,8 @@ function buildStructures() {
     return c;
   }
   const gh = makeGreenhouse();
-  placeStructure(gh, 410, 650, [LOCATIONS[4].rects[0]], 8, 'estufa');
-  placeStructure(gh, 410, 722, [LOCATIONS[4].rects[1]], 8, 'estufa');
+  placeStructure(gh, 410 + WEST_SHIFT, 650, [LOCATIONS[4].rects[0]], 8, 'estufa');
+  placeStructure(gh, 410 + WEST_SHIFT, 722, [LOCATIONS[4].rects[1]], 8, 'estufa');
 
   // -----------------------------------------------------------------------
   // 7) BARRACÃO / GARAGEM INCLINADO (Extremo Oeste perto da grama)
@@ -1576,7 +1715,7 @@ function buildStructures() {
     }
   }
   addOuterOutline(barG, 236, 150, [24, 30, 36]);
-  placeStructure(barC, 86, 922, LOCATIONS[5].rects, 6, 'barracao');
+  placeStructure(barC, 86 + WEST_SHIFT, 922, LOCATIONS[5].rects, 6, 'barracao');
 
   // -----------------------------------------------------------------------
   // 8) AUDITÓRIO (Centro-Norte, a leste da Subida, telhado icônico em leque)
@@ -1655,6 +1794,10 @@ function buildStructures() {
     decorate: (g) => { skylight(g, 48, 45, 36, 12); skylight(g, 48, 92, 36, 12); }
   });
   placeStructure(biblio, 1398, 682, LOCATIONS[7].rects, 18, 'biblioteca');
+  // Entrada lateral do pedagógico, voltada para o corredor do prédio principal.
+  rect(bgx, 1398, 643, 4, 19, '#0a6640');
+  rect(bgx, 1398, 646, 2, 14, '#79a6cc');
+  rect(bgx, 1385, 650, 13, 8, PAT.concrete);
 
   // -----------------------------------------------------------------------
   // 10) COPA / CANTINA (Telhado colonial cor de telha junto à margem noroeste do lago)
@@ -1674,7 +1817,9 @@ function buildStructures() {
       doors: [{ x: 40, w: 14, h: 11, doorFrame: C('#6b3f21') }]
     })
   });
-  placeStructure(copa, 1703, 606, LOCATIONS[8].rects, 14, 'copa');
+  placeStructure(copa, COPA.x, COPA.baseY, LOCATIONS[8].rects, 14, 'copa');
+  // O canto nordeste avança sobre a água. Redesenha acima da água animada, sem criar píer.
+  DECOR.push({ c: copa, x: COPA.x, y: COPA.baseY - COPA.h });
 
   // -----------------------------------------------------------------------
   // 11) REFEITÓRIO (À esquerda do grande pátio de concreto, com entrada pela esquerda!)
@@ -1784,6 +1929,69 @@ function nearAnySolid(x, y, pad) {
   return false;
 }
 
+function overVehicleRoad(x, y, margin = 0) {
+  return ROADS.some(rd => distToPolyline(x, y, rd.pts) < rd.w / 2 + margin);
+}
+
+// Telhados leves sobre as calçadas; os vãos ficam livres e só os pilares têm colisão.
+function buildCoveredWalkways() {
+  const roofHeight = 18;
+  for (const path of COVERED_PATHS) for (let i = 1; i < path.pts.length; i++) {
+    const a = path.pts[i - 1], b = path.pts[i];
+    const length = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const ux = (b[0] - a[0]) / length, uy = (b[1] - a[1]) / length;
+    const count = Math.ceil(length / 64);
+    for (let j = 0; j < count; j++) {
+      const from = j * length / count, to = (j + 1) * length / count;
+      const p = [a[0] + ux * from, a[1] + uy * from];
+      const q = [a[0] + ux * to, a[1] + uy * to];
+      const half = path.w / 2;
+      const left = Math.floor(Math.min(p[0], q[0]) - half - 2);
+      const top = Math.floor(Math.min(p[1], q[1]) - half - roofHeight - 2);
+      const w = Math.ceil(Math.abs(q[0] - p[0]) + path.w + 4);
+      const h = Math.ceil(Math.abs(q[1] - p[1]) + path.w + 4);
+      const [c, g] = makeCanvas(w, h);
+      const pixels = g.createImageData(w, h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const wx = left + x, wy = top + y + roofHeight;
+        const along = (wx - p[0]) * ux + (wy - p[1]) * uy;
+        const across = (wx - p[0]) * -uy + (wy - p[1]) * ux;
+        if (along < 0 || along >= to - from || Math.abs(across) > half) continue;
+        // Interrompe a cobertura nas travessias: nenhuma pista de veículos recebe teto.
+        if (overVehicleRoad(wx, wy, 1)) continue;
+        let color = Math.abs(across) > half - 2 ? [104, 139, 121] :
+          Math.abs(across) < 1 ? [235, 242, 239] :
+          (Math.floor(across + half) % 5 === 0 ? [162, 182, 173] : [204, 217, 211]);
+        const k = (y * w + x) * 4;
+        pixels.data[k] = color[0]; pixels.data[k + 1] = color[1]; pixels.data[k + 2] = color[2]; pixels.data[k + 3] = 255;
+      }
+      g.putImageData(pixels, 0, 0);
+      bgx.save(); bgx.globalAlpha = 0.13;
+      bgx.drawImage(silhouette(c), left + 4, top + roofHeight + 3); bgx.restore();
+      OVERLAYS.push({ c, x: left, y: top, pathId: path.id, ground: [p, q], width: path.w });
+    }
+    for (let d = 24; d < length - 12; d += 72) for (const side of [-1, 1]) {
+      const x = Math.round(a[0] + ux * d - uy * side * (path.w / 2 + 2));
+      const y = Math.round(a[1] + uy * d + ux * side * (path.w / 2 + 2));
+      if (overVehicleRoad(x, y, 3) || nearAnySolid(x, y, 6)) continue;
+      if (COVERED_PATHS.some(p => distToPolyline(x, y, p.pts) < 12)) continue;
+      if (LOCATIONS.some(l => l.doors.some(([dx, dy]) => Math.hypot(x - dx, y - dy) < 24))) continue;
+      const [c, g] = makeCanvas(4, 23);
+      rect(g, 0, 0, 3, 21, '#edf4ef'); rect(g, 2, 0, 1, 21, '#8ba699');
+      rect(g, 0, 21, 4, 2, '#789084');
+      SPRITES.push({ c, x: x - 1, y: y - 21, sortY: y + 2 });
+      addSolid(x - 1, y, 3, 3, 'pilar-corredor');
+    }
+  }
+}
+
+function overlayAlpha(overlay, x, y) {
+  if (!overlay.ground) return 1;
+  const distance = distToPolyline(x, y, overlay.ground);
+  // A cobertura esconde parcialmente o aluno, mas ele continua localizável sob o teto.
+  return 0.58 + 0.42 * clamp((distance - overlay.width / 2) / 12, 0, 1);
+}
+
 function populateWorld() {
   const TV = buildTreeVariants();
   const R = mulberry32(4242);
@@ -1798,11 +2006,13 @@ function populateWorld() {
     if (fse < H) addSolid(x, fse, 32, H - fse, 'floresta-sul');
   }
   // Muro/cerca sul e limite da Rodovia SC-135 (deixando o trevo/pórtico aberto entre x=1582..1680)
-  for (let x = 0; x < 640; x += 32) {
-    const limY = Math.round(roadTop(x + 16)) - 12;
-    addSolid(x, limY, 32, H - limY, 'cerca-sul');
+  for (const pts of FRONT_FENCES) for (let i = 1; i < pts.length; i++) {
+    const [x0, y0] = pts[i - 1], [x1, y1] = pts[i];
+    for (let x = x0; x < x1; x += 8) {
+      const y = Math.round(y0 + (y1 - y0) * (x - x0) / (x1 - x0));
+      addSolid(x, y - 3, Math.min(8, x1 - x), 6, 'cerca-sul');
+    }
   }
-  addSolid(634, 1764, 948, H - 1764, 'cerca-sul');
   addSolid(1582, 1764, 6, 29, 'cerca-sul');
   addSolid(1582, 1892, 98, H - 1892, 'limite-rodovia');
   for (let x = 1680; x < 1888; x += 32) {
@@ -1864,13 +2074,13 @@ function populateWorld() {
   }
   for (let ay = 1432; ay <= 1612; ay += 60) placeCampusTree(1630, ay, TV.park[0], true);
 
-  // Jardins em frente ao Bloco Administrativo (preservando a porta em x=1185) e ala oeste do Prédio Principal
-  for (const ax of [1074, 1136, 1234, 1296]) placeCampusTree(ax, 1250, TV.park[1], true);
-  placeCampusTree(575, 1006, TV.bush[1], false);
-  placeCampusTree(748, 1006, TV.bush[0], false);
+  // Dois canteiros circulares alinhados no centro da praça à direita do administrativo.
+  for (const [x, y] of ADMIN_TREES) placeCampusTree(x, y, TV.park[1], true);
 
   // Ilhas arborizadas do Estacionamento Principal
-  for (const ix of [995, 1065, 1135, 1245, 1315, 1385]) placeCampusTree(ix, 1522, TV.park[0], true);
+  for (const [ix, iy, iw] of PARK_ISLANDS) {
+    for (const dy of [25, 80, 135]) placeCampusTree(ix + iw / 2, iy + dy, TV.park[0], true);
+  }
 
   // Nota: NENHUMA árvore no triângulo de mato em frente ao Pedagógico (PEDAG_TRIANGLE) nem na Subida (SUBIDA_RAMP)!
   // Árvores nas margens dos lagos (incluindo posição 5, sem píer), entorno da Quadra de Areia (pos 2) e gramados
@@ -1895,8 +2105,9 @@ function populateWorld() {
   ];
   for (const [tx, ty, spr] of scenicTrees) {
     if (LAKE_DEFS[0].inside(tx, ty, 8) || LAKE_DEFS[1].inside(tx, ty, 8)) continue;
-    if (distToPolyline(tx, ty, ROADS[0].pts) < 52 || distToPolyline(tx, ty, ROADS[1].pts) < 36 || distToPolyline(tx, ty, ROADS[2].pts) < 36) continue;
-    if (insideAnyRect(tx, ty, [SAND_COURT, GYM_PLAZA, SUBIDA_RAMP], 16)) continue;
+    if (ROADS.some(rd => distToPolyline(tx, ty, rd.pts) < rd.w / 2 + 12)) continue;
+    if (COVERED_PATHS.some(p => distToPolyline(tx, ty, p.pts) < p.w / 2 + 18)) continue;
+    if (insideAnyRect(tx, ty, [SAND_COURT, GYM_PLAZA, SUBIDA_RAMP, LOWER_COURT, ...PAVED], 16)) continue;
     if (nearAnySolid(tx, ty, 8)) continue;
     placeCampusTree(tx, ty, spr, true);
   }
@@ -1906,7 +2117,8 @@ function populateWorld() {
     const rad = polarR(LAKE_DEFS[0].keys, ang) + 11 + (R() * 11);
     const bx = Math.round(LAKE_DEFS[0].cx + Math.cos(ang) * rad);
     const by = Math.round(LAKE_DEFS[0].cy + Math.sin(ang) * rad);
-    if (distToPolyline(bx, by, ROADS[0].pts) < 52 || distToPolyline(bx, by, ROADS[1].pts) < 38 || distToPolyline(bx, by, ROADS[2].pts) < 38) continue;
+    if (ROADS.some(rd => distToPolyline(bx, by, rd.pts) < rd.w / 2 + 14)) continue;
+    if (COVERED_PATHS.some(p => distToPolyline(bx, by, p.pts) < p.w / 2 + 18)) continue;
     if (insideAnyRect(bx, by, [SAND_COURT, PARK_EAST, GYM_PLAZA], 18)) continue;
     if (nearAnySolid(bx, by, 10)) continue;
     if (R() < 0.65) placeCampusTree(bx, by, TV.bush[Math.floor(R() * TV.bush.length)], false);
@@ -1924,15 +2136,16 @@ function populateWorld() {
   }
 
   let ci = 0;
-  // Fileira norte do Estacionamento Principal (24 vagas: x = 890 + slot*24)
+  // Fileira norte horizontal do Estacionamento Principal (24 vagas: x = 890 + slot*24)
   for (const slot of [0, 1, 3, 4, 5, 7, 9, 10, 12, 14, 15, 17, 19, 21, 22]) {
-    placeParkedCar(894 + slot * 24, 1315, (slot % 3 === 0) ? 2 : 0, ci++);
+    if (894 + slot * 24 >= PARK_ACCESS[0] && 894 + slot * 24 < PARK_ACCESS[0] + PARK_ACCESS[2]) continue;
+    placeParkedCar(894 + slot * 24, 1395, (slot % 3 === 0) ? 2 : 0, ci++);
   }
-  // Fileiras centrais (acima e abaixo das ilhas arborizadas)
-  for (const slot of [0, 2, 3, 5, 7]) placeParkedCar(974 + slot * 24, 1471, 2, ci++);
-  for (const slot of [1, 2, 4, 6]) placeParkedCar(1224 + slot * 24, 1471, 0, ci++);
-  for (const slot of [0, 1, 4, 6]) placeParkedCar(974 + slot * 24, 1539, 0, ci++);
-  for (const slot of [0, 2, 3, 5, 7]) placeParkedCar(1224 + slot * 24, 1539, 2, ci++);
+  // Três fileiras verticais no miolo, com carros perpendiculares aos canteiros.
+  for (const [ix, iy, iw] of PARK_ISLANDS) {
+    for (const slot of [0, 1, 3, 5, 6, 7]) placeParkedCar(ix - 35, iy + 2 + slot * 20, 1, ci++);
+    for (const slot of [0, 2, 3, 4, 6]) placeParkedCar(ix + iw + 5, iy + 2 + slot * 20, 3, ci++);
+  }
   // Fileira sul (junto ao gradil)
   for (const slot of [1, 2, 4, 5, 6, 8, 11, 13, 16, 18, 20, 23]) {
     placeParkedCar(894 + slot * 24, 1704, (slot & 1) ? 0 : 2, ci++);
@@ -1941,7 +2154,7 @@ function populateWorld() {
   for (const slot of [0, 1, 4, 5, 8]) placeParkedCar(644, 1483 + slot * 22, (slot & 1) ? 1 : 3, ci++);
   // Vagas leste ao longo do Calçamento Principal (visíveis na foto aérea)
   const eastSlots = [[0, 8], [2, 0], [5, 9], [8, 3], [10, 1], [12, 4]];
-  for (const [slot, cIdx] of eastSlots) placeParkedCar(1694, 1012 + slot * 24, 3, cIdx);
+  for (const [slot, cIdx] of eastSlots) placeParkedCar(1708, 1012 + slot * 24, 3, cIdx);
 
   // Trator agrícola estacionado no pátio de brita do Barracão/Garagem
   const [trC, trG] = makeCanvas(24, 20);
@@ -1951,8 +2164,8 @@ function populateWorld() {
   rect(trG, 6, 7, 5, 6, '#334155'); rect(trG, 13, 6, 6, 8, '#15803d');
   rect(trG, 19, 8, 3, 4, '#facc15');
   addOuterOutline(trG, 24, 20, [18, 22, 20]);
-  SPRITES.push({ c: trC, x: 278, y: 876, sortY: 895 });
-  addSolid(280, 879, 20, 15, 'trator');
+  SPRITES.push({ c: trC, x: 278 + WEST_SHIFT, y: 876, sortY: 895 });
+  addSolid(280 + WEST_SHIFT, 879, 20, 15, 'trator');
 
   // 5) Mobiliário Urbano: Postes de Luz e Bancos (sem guarda-sóis e sem píer!)
   const lamp = makeLamp(), bench = makeBench();
@@ -1962,11 +2175,14 @@ function populateWorld() {
     [620, 468], [860, 468], [1020, 468], [1280, 468], [1510, 468], [1860, 468],
     [2308, 498], [2566, 515], [2566, 710], [2630, 1024], [2955, 1024]
   ];
-  for (const [lx, ly] of lampCoords) SPRITES.push({ c: lamp, x: lx - 4, y: ly - 30, sortY: ly });
+  for (const [lx, ly] of lampCoords) {
+    // Iluminação apenas fora dos corredores cobertos; os pilares estruturais são independentes.
+    if (COVERED_PATHS.some(p => distToPolyline(lx, ly, p.pts) <= p.w / 2 + 4)) continue;
+    SPRITES.push({ c: lamp, x: lx - 4, y: ly - 30, sortY: ly });
+  }
 
   const benchCoords = [
-    [735, 780], [1025, 780], [1352, 610], [1352, 810],
-    [1706, 612], [2285, 756], [2375, 756], [2602, 845], [2602, 935]
+    [1704, 890], [2285, 756], [2375, 756]
   ];
   for (const [bx, by] of benchCoords) {
     SPRITES.push({ c: bench, x: bx, y: by, sortY: by + 9 });
@@ -1983,12 +2199,12 @@ function populateWorld() {
 const WORLD_LABELS = [
   ...LOCATIONS.map(l => ({ id: l.id, text: l.name.split('•')[0].trim(), x: l.label[0], y: l.label[1], primary: true })),
   { id: 'sc135', text: 'Rodovia SC-135', x: 1340, y: 1932, primary: false },
-  { id: 'estac', text: 'Estacionamento Principal', x: 1185, y: 1418, primary: false },
+  { id: 'estac', text: 'Estacionamento Principal', x: 1185, y: 1454, primary: false },
   { id: 'motos', text: 'Abrigo Motos / Bikes', x: 820, y: 1502, primary: false },
   { id: 'lago1', text: 'Lago Principal', x: 2045, y: 975, primary: false },
   { id: 'lago2', text: 'Lago Menor', x: 2705, y: 335, primary: false },
   { id: 'areia', text: 'Quadra de Areia', x: 2339, y: 646, primary: false },
-  { id: 'subida', text: 'Subida / Acesso', x: 926, y: 520, primary: false },
+  { id: 'subida', text: 'Subida / Acesso', x: 892, y: 540, primary: false },
   { id: 'mata', text: 'Mata Nativa', x: 1220, y: 310, primary: false }
 ];
 
@@ -2004,6 +2220,8 @@ function buildMinimap() {
   mg.drawImage(bg, 0, 0, W, H, 0, 0, MINI_W, MINI_H);
   const sx = MINI_W / W, sy = MINI_H / H;
   for (const lk of LAKES) mg.drawImage(lk.frames[0], 0, 0, lk.w, lk.h, lk.x * sx, lk.y * sy, lk.w * sx, lk.h * sy);
+  for (const dec of DECOR) mg.drawImage(dec.c, dec.x * sx, dec.y * sy, dec.c.width * sx, dec.c.height * sy);
+  for (const ov of OVERLAYS) mg.drawImage(ov.c, ov.x * sx, ov.y * sy, ov.c.width * sx, ov.c.height * sy);
 
   // Destaca cada prédio no minimapa para leitura imediata
   for (const loc of LOCATIONS) {
@@ -2061,25 +2279,92 @@ const coordsEl = document.getElementById('coords');
 const interactEl = document.getElementById('interact');
 const intName = document.getElementById('int-name');
 const intDesc = document.getElementById('int-desc');
-const btnHitbox = document.getElementById('btn-hitbox');
+const enterBuilding = document.getElementById('enter-building');
+function rememberExterior() {
+  const entry=activeDoor?CampusAccess.forDoor(activeDoor.door,activeDoor.loc.id):null;
+  if (!entry?.canEnter) return;
+  try { sessionStorage.setItem('ifc-exterior-return', JSON.stringify({ buildingId:activeDoor.loc.id, entryId:entry.id, x:player.x, y:player.y, zoom, dir:player.dir })); } catch (_) { /* A navegação também funciona com armazenamento desativado. */ }
+}
+function principalInteriorURL(){return activeDoor?CampusAccess.interiorURL(CampusAccess.forDoor(activeDoor.door,activeDoor.loc.id)?.id,activeDoor.loc.id):null;}
+enterBuilding.addEventListener('click', rememberExterior);
+const btnJoystick = document.getElementById('btn-joystick');
 const btnRun = document.getElementById('btn-run');
 const btnHelp = document.getElementById('btn-help');
 const helpEl = document.getElementById('help');
 const debugBadge = document.getElementById('debug-badge');
 const miniWrap = document.getElementById('minimap-wrap');
 
+const btnZoomOut = document.getElementById('btn-zoom-out');
+const btnZoomIn = document.getElementById('btn-zoom-in');
+const btnFit = document.getElementById('btn-fit');
+const btnFollow = document.getElementById('btn-follow');
+const joystick = document.getElementById('joystick');
+const joystickKnob = document.getElementById('joystick-knob');
 let DPR = 1, screenW = window.innerWidth, screenH = window.innerHeight;
-let zoom = window.innerWidth < 768 ? 2 : 2;
-const ZOOM_STEPS = [0.75, 1, 1.5, 2, 3, 4];
+let zoom = screenW <= 900 ? 1.25 : 2;
+let overview = false;
+const ZOOM_STEPS = [0.125, 0.2, 0.3, 0.4, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
+const MAX_ZOOM = 4;
+let visibleRect = null;
 
+// Reserva espaço para o HUD; o mapa inteiro cabe também em retrato e em paisagem.
+function viewRect() {
+  if (visibleRect) return visibleRect;
+  const compact = screenW <= 900;
+  const top = Math.max(compact ? 112 : 104, document.getElementById('toolbar').getBoundingClientRect().bottom + 10);
+  const bottom = compact ? (screenH <= 520 ? 64 : 184) : 54;
+  visibleRect = { x: 12, y: top, w: Math.max(1, screenW - 24), h: Math.max(1, screenH - top - bottom) };
+  return visibleRect;
+}
+function fitZoom() { const r = viewRect(); return Math.min(r.w / W, r.h / H); }
+function cameraAxis(focus, worldSize, start, size, z) {
+  const visible = size / z;
+  const center = visible >= worldSize ? worldSize / 2 : clamp(focus, visible / 2, worldSize - visible / 2);
+  return center - (start + size / 2) / z;
+}
+function cameraTarget() {
+  const r = viewRect();
+  return {
+    x: cameraAxis(overview ? W / 2 : player.x, W, r.x, r.w, zoom),
+    y: cameraAxis(overview ? H / 2 : player.y, H, r.y, r.h, zoom)
+  };
+}
+function clampCamera() {
+  const r = viewRect();
+  cam.x = clamp(cam.x, cameraAxis(0, W, r.x, r.w, zoom), cameraAxis(W, W, r.x, r.w, zoom));
+  cam.y = clamp(cam.y, cameraAxis(0, H, r.y, r.h, zoom), cameraAxis(H, H, r.y, r.h, zoom));
+}
+function refreshZoomUI() {
+  document.body.classList.toggle('overview', overview);
+  btnZoomOut.disabled = zoom <= fitZoom() + 0.0001;
+  btnZoomIn.disabled = zoom >= MAX_ZOOM;
+  btnFit.classList.toggle('on', overview);
+  btnFit.setAttribute('aria-pressed', String(overview));
+  btnFollow.classList.toggle('on', !overview);
+}
+function setZoom(value) {
+  const min = fitZoom();
+  zoom = clamp(value, min, MAX_ZOOM);
+  overview = zoom <= min + 0.0001;
+  Object.assign(cam, cameraTarget(), { init: true });
+  refreshZoomUI();
+}
+function stepZoom(direction) {
+  const levels = [fitZoom(), ...ZOOM_STEPS.filter(z => z > fitZoom() + 0.0001)];
+  const next = direction > 0 ? levels.find(z => z > zoom + 0.0001) : levels.slice().reverse().find(z => z < zoom - 0.0001);
+  setZoom(next === undefined ? (direction > 0 ? MAX_ZOOM : fitZoom()) : next);
+}
 function resize() {
   DPR = Math.min(window.devicePixelRatio || 1, 2);
   screenW = window.innerWidth; screenH = window.innerHeight;
+  visibleRect = null;
   canvas.width = Math.round(screenW * DPR);
   canvas.height = Math.round(screenH * DPR);
   ctx.imageSmoothingEnabled = false;
+  setZoom(overview ? fitZoom() : zoom);
 }
 window.addEventListener('resize', resize);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', resize);
 
 // Estado do jogador (spawn na entrada da Guarita / Pórtico, pista direita de acesso)
 const player = {
@@ -2094,69 +2379,141 @@ let PLAYER_FRAMES = null;
 const cam = { x: player.x - 300, y: player.y - 200, init: false };
 const keys = new Set();
 let showHitboxes = false;
+let joystickEnabled = false;
 let runToggle = false;
 let clickTarget = null; // {x, y, stuckTimer}
-let pointerHeld = false, pointerScreen = { x: 0, y: 0 };
+let pointerHeld = false;
+const pointers = new Map();
+let pinch = null, gestureHadMulti = false;
+const stick = { x: 0, y: 0, pointerId: null };
 
 function toggleHitboxes() {
   showHitboxes = !showHitboxes;
-  btnHitbox.classList.toggle('on', showHitboxes);
   debugBadge.classList.toggle('show', showHitboxes);
+}
+function toggleJoystick() {
+  joystickEnabled = !joystickEnabled;
+  resetStick();
+  joystick.classList.toggle('enabled', joystickEnabled);
+  joystick.setAttribute('aria-hidden', String(!joystickEnabled));
+  btnJoystick.classList.toggle('on', joystickEnabled);
+  btnJoystick.classList.toggle('green', joystickEnabled);
+  btnJoystick.setAttribute('aria-pressed', String(joystickEnabled));
 }
 function toggleRun() {
   runToggle = !runToggle;
   btnRun.classList.toggle('on', runToggle);
   btnRun.classList.toggle('green', runToggle);
+  btnRun.setAttribute('aria-pressed', String(runToggle));
 }
-btnHitbox.addEventListener('click', toggleHitboxes);
+btnJoystick.addEventListener('click', toggleJoystick);
 btnRun.addEventListener('click', toggleRun);
-btnHelp.addEventListener('click', () => helpEl.classList.toggle('hidden'));
+btnHelp.addEventListener('click', () => {
+  if (screenW <= 900) { helpEl.classList.remove('hidden'); helpEl.classList.toggle('mobile-open'); }
+  else helpEl.classList.toggle('hidden');
+});
+btnZoomIn.addEventListener('click', () => stepZoom(1));
+btnZoomOut.addEventListener('click', () => stepZoom(-1));
+btnFit.addEventListener('click', () => setZoom(fitZoom()));
+btnFollow.addEventListener('click', () => setZoom(screenW <= 900 ? 1.25 : 2));
 
 window.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
   if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
   keys.add(k);
   if (!e.repeat) {
-    if (k === 'h' || k === 'c') toggleHitboxes();
-    else if (k === 'm') miniWrap.style.display = (miniWrap.style.display === 'none') ? '' : 'none';
-    else if (e.key === '+' || e.key === '=') {
-      const idx = ZOOM_STEPS.findIndex(z => z >= zoom);
-      zoom = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, (idx < 0 ? 2 : idx) + 1)];
-    } else if (e.key === '-' || e.key === '_') {
-      const idx = ZOOM_STEPS.findIndex(z => z >= zoom);
-      zoom = ZOOM_STEPS[Math.max(0, (idx < 0 ? 2 : idx) - 1)];
+    if (k === 'e' && principalInteriorURL()) {
+      e.preventDefault(); rememberExterior(); window.location.assign(principalInteriorURL());
     }
+    else if (k === 'h' || k === 'c') toggleHitboxes();
+    else if (k === 'm') miniWrap.style.display = (miniWrap.style.display === 'none') ? '' : 'none';
+    else if (k === '0') setZoom(fitZoom());
+    else if (e.key === '+' || e.key === '=') stepZoom(1);
+    else if (e.key === '-' || e.key === '_') stepZoom(-1);
   }
 });
 window.addEventListener('keyup', (e) => keys.delete(e.key.toLowerCase()));
-window.addEventListener('blur', () => { keys.clear(); pointerHeld = false; });
-
-canvas.addEventListener('wheel', (e) => {
-  e.preventDefault();
-  const idx = ZOOM_STEPS.findIndex(z => z >= zoom);
-  if (e.deltaY < 0) zoom = ZOOM_STEPS[Math.min(ZOOM_STEPS.length - 1, (idx < 0 ? 2 : idx) + 1)];
-  else zoom = ZOOM_STEPS[Math.max(0, (idx < 0 ? 2 : idx) - 1)];
-}, { passive: false });
+function resetStick() {
+  stick.x = 0; stick.y = 0; stick.pointerId = null;
+  joystickKnob.style.transform = '';
+}
+function resetInput() {
+  keys.clear(); pointerHeld = false; pointers.clear(); pinch = null; gestureHadMulti = false;
+  clickTarget = null; resetStick();
+}
+window.addEventListener('blur', resetInput);
+document.addEventListener('visibilitychange', () => { if (document.hidden) resetInput(); });
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); stepZoom(e.deltaY < 0 ? 1 : -1); }, { passive: false });
 
 function screenToWorld(clientX, clientY) {
-  return { x: cam.x + clientX / zoom, y: cam.y + clientY / zoom };
+  const scale = zoom * DPR;
+  return { x: Math.round(cam.x * scale) / scale + clientX / zoom, y: Math.round(cam.y * scale) / scale + clientY / zoom };
+}
+function walkToScreen(x, y) {
+  const wp = screenToWorld(x, y);
+  // As margens vazias da visão geral não são destinos do personagem.
+  if (wp.x < 0 || wp.x > W || wp.y < 0 || wp.y > H) return;
+  clickTarget = { x: clamp(wp.x, 12, W - 12), y: clamp(wp.y, 14, H - 10), stuck: 0 };
+}
+function pointerPair() {
+  const [a, b] = [...pointers.values()];
+  return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, distance: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)) };
 }
 canvas.addEventListener('pointerdown', (e) => {
-  if (e.button !== undefined && e.button !== 0) return;
-  pointerHeld = true;
-  pointerScreen.x = e.clientX; pointerScreen.y = e.clientY;
-  const wp = screenToWorld(e.clientX, e.clientY);
-  clickTarget = { x: clamp(wp.x, 12, W - 12), y: clamp(wp.y, 14, H - 10), stuck: 0 };
+  if (e.button !== 0) return;
+  e.preventDefault();
+  canvas.setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, startX: e.clientX, startY: e.clientY, moved: false });
+  if (pointers.size >= 2) {
+    gestureHadMulti = true; pointerHeld = false; clickTarget = null;
+    const pair = pointerPair();
+    pinch = { distance: pair.distance, zoom, anchor: screenToWorld(pair.x, pair.y) };
+  } else if (e.pointerType !== 'touch') {
+    pointerHeld = true; walkToScreen(e.clientX, e.clientY);
+  }
 });
-window.addEventListener('pointermove', (e) => {
-  if (!pointerHeld) return;
-  pointerScreen.x = e.clientX; pointerScreen.y = e.clientY;
-  const wp = screenToWorld(e.clientX, e.clientY);
-  clickTarget = { x: clamp(wp.x, 12, W - 12), y: clamp(wp.y, 14, H - 10), stuck: 0 };
+canvas.addEventListener('pointermove', (e) => {
+  const point = pointers.get(e.pointerId); if (!point) return;
+  point.x = e.clientX; point.y = e.clientY;
+  point.moved ||= Math.hypot(point.x - point.startX, point.y - point.startY) > 10;
+  if (pointers.size >= 2 && pinch) {
+    const pair = pointerPair();
+    zoom = clamp(pinch.zoom * pair.distance / pinch.distance, fitZoom(), MAX_ZOOM);
+    overview = zoom <= fitZoom() + 0.0001;
+    cam.x = pinch.anchor.x - pair.x / zoom; cam.y = pinch.anchor.y - pair.y / zoom;
+    clampCamera(); refreshZoomUI();
+  } else if (pointerHeld && !gestureHadMulti) walkToScreen(e.clientX, e.clientY);
 });
-window.addEventListener('pointerup', () => { pointerHeld = false; });
+function finishPointer(e) {
+  const point = pointers.get(e.pointerId); if (!point) return;
+  if (e.type === 'pointerup' && e.pointerType === 'touch' && !gestureHadMulti && !point.moved) walkToScreen(e.clientX, e.clientY);
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch = null;
+  if (!pointers.size) { pointerHeld = false; gestureHadMulti = false; }
+  if (e.type !== 'pointerup') clickTarget = null;
+}
+for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) canvas.addEventListener(event, finishPointer);
 
-// Clique no minimapa também move o personagem até o setor clicado
+// Controle virtual com captura do dedo: soltar/cancelar sempre interrompe o movimento.
+function moveStick(e) {
+  const r = joystick.getBoundingClientRect();
+  const dx = e.clientX - r.left - r.width / 2, dy = e.clientY - r.top - r.height / 2;
+  const length = Math.hypot(dx, dy), radius = 32, amount = Math.min(1, length / radius);
+  stick.x = length > 6 ? dx / length * amount : 0;
+  stick.y = length > 6 ? dy / length * amount : 0;
+  joystickKnob.style.transform = 'translate(' + (stick.x * radius) + 'px,' + (stick.y * radius) + 'px)';
+}
+joystick.addEventListener('pointerdown', e => {
+  if (!joystickEnabled || stick.pointerId !== null) return;
+  e.preventDefault(); stick.pointerId = e.pointerId; clickTarget = null;
+  joystick.setPointerCapture(e.pointerId); moveStick(e);
+});
+joystick.addEventListener('pointermove', e => { if (e.pointerId === stick.pointerId) moveStick(e); });
+for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+  joystick.addEventListener(event, e => { if (e.pointerId === stick.pointerId) resetStick(); });
+}
+
+// Clique no minimapa também move o personagem até o setor clicado.
 miniCanvas.addEventListener('pointerdown', (e) => {
   const r = miniCanvas.getBoundingClientRect();
   const mx = (e.clientX - r.left) / r.width * W;
@@ -2218,10 +2575,14 @@ function updateProximity() {
   }
 
   activeDoor = bestDoor;
+  const entrance=bestDoor?CampusAccess.forDoor(bestDoor.door,bestDoor.loc.id):null;
+  const interiorURL=principalInteriorURL();
+  enterBuilding.hidden = !interiorURL;
+  if(interiorURL)enterBuilding.href=interiorURL;
   activeLocId = bestDoor ? bestDoor.loc.id : (nearLoc ? nearLoc.id : null);
 
   if (bestDoor) {
-    intName.textContent = bestDoor.loc.name;
+    intName.textContent = entrance?entrance.label:bestDoor.loc.name;
     intDesc.textContent = bestDoor.loc.desc;
     interactEl.classList.add('show');
   } else {
@@ -2230,7 +2591,9 @@ function updateProximity() {
 
   // Atualiza barra superior de localização
   let lbl = '', title = 'Caminhando pelo Campus', isNear = false;
-  if (nearLoc) {
+  if (bestDoor) {
+    lbl = 'Próximo a:'; title = bestDoor.loc.name; isNear = true;
+  } else if (nearLoc) {
     lbl = 'Próximo a:'; title = nearLoc.name; isNear = true;
   } else if (LAKE_DEFS[0].inside(player.x, player.y, 34)) {
     lbl = 'Próximo a:'; title = 'Lago Principal'; isNear = true;
@@ -2264,6 +2627,8 @@ function update(dt) {
     clickTarget = null; // teclado assume prioridade imediata
     const len = Math.hypot(ix, iy);
     ix /= len; iy /= len;
+  } else if (stick.x || stick.y) {
+    ix = stick.x; iy = stick.y; clickTarget = null;
   } else if (clickTarget) {
     const dx = clickTarget.x - player.x, dy = clickTarget.y - player.y;
     const dist = Math.hypot(dx, dy);
@@ -2298,16 +2663,14 @@ function update(dt) {
     player.animTimer = 0;
   }
 
-  // Câmera suave (lerp) centralizada no jogador e limitada às bordas do mapa
-  const vw = Math.min(W, screenW / zoom), vh = Math.min(H, screenH / zoom);
-  const targetX = clamp(player.x - vw / 2, 0, Math.max(0, W - vw));
-  const targetY = clamp(player.y - vh / 2, 0, Math.max(0, H - vh));
-  if (!cam.init) {
-    cam.x = targetX; cam.y = targetY; cam.init = true;
-  } else {
-    const alpha = 1 - Math.exp(-9.5 * dt);
-    cam.x += (targetX - cam.x) * alpha;
-    cam.y += (targetY - cam.y) * alpha;
+  // Câmera limitada à área útil; sincroniza zoom/rotação sem recortes fora do canvas.
+  if (!pinch) {
+    const target = cameraTarget();
+    const alpha = cam.init ? 1 - Math.exp(-9.5 * dt) : 1;
+    cam.x += (target.x - cam.x) * alpha;
+    cam.y += (target.y - cam.y) * alpha;
+    cam.init = true;
+    clampCamera();
   }
 
   updateProximity();
@@ -2334,8 +2697,9 @@ function render(now) {
 
   // 1) Recorte visível do cenário base (grama, ruas, calçadas, sombras e fachadas)
   const sx0 = clamp(Math.floor(cx) - 2, 0, W), sy0 = clamp(Math.floor(cy) - 2, 0, H);
-  const sw = clamp(Math.ceil(vw) + 4, 1, W - sx0), sh = clamp(Math.ceil(vh) + 4, 1, H - sy0);
-  ctx.drawImage(bg, sx0, sy0, sw, sh, sx0, sy0, sw, sh);
+  const sx1 = clamp(Math.ceil(cx + vw) + 2, 0, W), sy1 = clamp(Math.ceil(cy + vh) + 2, 0, H);
+  const sw = sx1 - sx0, sh = sy1 - sy0;
+  if (sw > 0 && sh > 0) ctx.drawImage(bg, sx0, sy0, sw, sh, sx0, sy0, sw, sh);
 
   // 2) Água animada dos lagos + aerador e vitórias-régias
   for (const lk of LAKES) {
@@ -2383,8 +2747,13 @@ function render(now) {
   }
   if (!playerDrawn) drawPlayerNow();
 
-  // 6) Coberturas superiores (Pórtico de Entrada arqueado sobre as pistas)
-  for (const ov of OVERLAYS) ctx.drawImage(ov.c, ov.x, ov.y);
+  // 6) Coberturas acima do aluno: o piso continua transitável, com oclusão parcial sob o teto.
+  for (const ov of OVERLAYS) {
+    if (ov.x + ov.c.width < viewL || ov.x > viewR || ov.y + ov.c.height < viewT || ov.y > viewB) continue;
+    ctx.globalAlpha = overlayAlpha(ov, player.x, player.y);
+    ctx.drawImage(ov.c, ov.x, ov.y);
+  }
+  ctx.globalAlpha = 1;
 
   // 7) Ícone flutuante de interação acima da porta ativa
   if (activeDoor) {
@@ -2436,7 +2805,7 @@ function render(now) {
   const floatBob = Math.sin(t * 2.2) * 1.8;
 
   for (const lb of WORLD_LABELS) {
-    if (!lb.primary && zoom < 1.5) continue;
+    if (zoom < 0.45 || (!lb.primary && zoom < 1.5)) continue;
     const sx = (lb.x - cx) * zoom;
     const sy = (lb.y - cy) * zoom + (lb.primary ? floatBob : 0);
     if (sx < -90 || sx > screenW + 90 || sy < -30 || sy > screenH + 30) continue;
@@ -2472,6 +2841,28 @@ function render(now) {
 /* =========================================================================
    12. INICIALIZAÇÃO E LOOP PRINCIPAL (60 FPS)
    ========================================================================= */
+function restoreExterior() {
+  if (!window.location?.search) return;
+  const query=new URLSearchParams(window.location.search),building=query.get('from');
+  const loc=LOCATIONS.find(l=>l.id===building);if(!loc||!CampusAccess.entriesFor(building).length)return;
+  const exit=CampusAccess.get(query.get('saida'),building);
+  let saved = null;
+  try { saved = JSON.parse(sessionStorage.getItem('ifc-exterior-return')); } catch (_) {}
+  const free = (x,y) => Number.isFinite(x) && Number.isFinite(y) && x > 6 && x < W-6 && y > 8 && y < H &&
+    !SOLIDS.some(s => x+5 > s.x && x-5 < s.x+s.w && y > s.y && y-7 < s.y+s.h);
+  if(exit&&free(...exit.outside.spawn)){
+    [player.x,player.y]=exit.outside.spawn;player.dir=exit.outside.dir;
+    if(Number.isFinite(saved?.zoom))setZoom(saved.zoom);
+  } else if (saved && (saved.buildingId||'principal')===building && free(saved.x,saved.y) && loc.doors.some(([x,y]) => Math.hypot(x-saved.x,y-saved.y) < 70)) {
+    player.x=saved.x; player.y=saved.y;
+    if (['up','down','left','right'].includes(saved.dir)) player.dir=saved.dir;
+    if (Number.isFinite(saved.zoom)) setZoom(saved.zoom);
+  } else {
+    const [x,y] = (building==='principal'?CampusAccess.get('2'):CampusAccess.entriesFor(building)[0]).outside.spawn;
+    if (free(x,y)) { player.x=x;player.y=y; }
+  }
+  cam.init=false;
+}
 function init() {
   resize();
   [bg, bgx] = makeCanvas(W, H);
@@ -2479,9 +2870,11 @@ function init() {
   drawTerrain();
   buildLakes();
   buildStructures();
+  buildCoveredWalkways();
   populateWorld();
   PLAYER_FRAMES = buildPlayerFrames();
   buildMinimap();
+  restoreExterior();
   updateProximity();
 
   // Oculta tela de carregamento e inicia o loop
